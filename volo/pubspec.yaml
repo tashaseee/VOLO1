@@ -1,0 +1,84 @@
+name: volo
+description: A new Flutter project.
+version: 1.0.0+1
+
+environment:
+  sdk: '^3.9.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_svg: ^2.0.7
+  google_fonts: ^6.2.1
+  video_player: ^2.9.1
+  url_launcher: ^6.1.11
+  image_picker: ^1.1.2
+  lottie: ^3.1.2
+  file_picker: ^5.5.0
+  http: ^1.2.1
+  shared_preferences: ^2.5.4
+
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.12.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/volo-app.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/voloapp.svg
+    - assets/images/intro1.svg
+    - assets/images/intro2.svg
+    - assets/images/intro3.svg
+    - assets/images/intro4.svg
+    - assets/images/eye.svg
+    - assets/images/mail.svg
+    - assets/images/name.svg
+    - assets/images/Phone.svg
+    - assets/images/password.svg
+    - assets/images/left.svg
+    - assets/images/eye_off.svg
+    - assets/images/anivolo.mp4
+    - assets/images/filter.svg
+    - assets/images/search.svg
+    - assets/images/VOLO-2.svg
+    - assets/images/mask.svg 
+    - assets/images/us.png
+    - assets/images/photo.png
+    - assets/images/home.svg
+    - assets/images/ivents.svg
+    - assets/images/notifi.svg
+    - assets/images/reclama.svg
+    - assets/images/application.svg
+    - assets/images/Shape.svg
+    - assets/images/zhar.png
+    - assets/images/an1.svg
+    - assets/images/an12.svg
+    - assets/images/an13.svg
+    - assets/images/calendar.svg
+    - assets/images/heart.svg
+    - assets/images/gal.svg
+    - assets/images/don.png
+    - assets/images/pen.svg
+    - assets/images/org.png
+    - assets/images/appl.png
+    - assets/images/clock.svg
+    - assets/images/gps.svg
+    - assets/images/astana_zh.png
+    - assets/images/check.svg
+    - assets/images/info.svg
+    - assets/images/check.svg
+    - assets/images/star.png
+    - assets/images/sert.jpg
+    - assets/animation/fly.json
+    - assets/animation/cloud.json
+    - assets/images/org_home.png
+    - assets/images/biz.png
+    - assets/images/plus.svg
+    - assets/images/minus.svg
