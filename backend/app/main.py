@@ -3,12 +3,14 @@ from .database import engine
 from .models import user as user_models
 from .models import event as event_models
 from .models import notification as notification_models
-from .api import auth, users, events, admin, notifications
+from .models import chat as chat_models
+from .api import auth, users, events, admin, notifications, ai_chat, chats
 from sqlalchemy import text
 
 user_models.Base.metadata.create_all(bind=engine)
 event_models.Base.metadata.create_all(bind=engine)
 notification_models.Base.metadata.create_all(bind=engine)
+chat_models.Base.metadata.create_all(bind=engine)
 
 # Migration for new columns
 with engine.connect() as conn:
@@ -45,6 +47,8 @@ app.include_router(users.router)
 app.include_router(events.router)
 app.include_router(admin.router)
 app.include_router(notifications.router)
+app.include_router(ai_chat.router)
+app.include_router(chats.router)
 
 from fastapi.staticfiles import StaticFiles
 import os

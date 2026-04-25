@@ -1,0 +1,1 @@
+import sys; import os; sys.path.append(os.path.dirname(os.path.abspath(__file__))); from app.database import SessionLocal, engine; from app.models import user, event; Event = event.Event; db = SessionLocal(); events = db.query(Event).all(); [setattr(e, 'image_url', '') for e in events if e.image_url and '/static/images/' in e.image_url]; db.commit(); print('Cleaned');

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
 import Sidebar from './components/Sidebar';
 import UsersPage from './pages/UsersPage';
 import EventsPage from './pages/EventsPage';
@@ -10,11 +9,11 @@ import PendingOrgsPage from './pages/PendingOrgsPage';
 
 function ProtectedLayout({ children, onLogout }) {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="app-container">
       <Sidebar onLogout={onLogout} />
-      <div style={{ flex: 1, padding: '2rem', background: '#F8F9FA', overflowY: 'auto' }}>
+      <main className="main-content">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

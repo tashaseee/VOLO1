@@ -1,57 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'blocs/forgot_password/forgot_password_bloc.dart';
+import 'blocs/forgot_password/forgot_password_event.dart';
+import 'blocs/forgot_password/forgot_password_state.dart';
 import 'services/api_service.dart';
+
 import 'reset_password_page.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends StatelessWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ForgotPasswordBloc(apiService: ApiService()),
+      child: const ForgotPasswordView(),
+    );
+  }
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final ApiService _apiService = ApiService();
+class ForgotPasswordView extends StatefulWidget {
+  const ForgotPasswordView({super.key});
+
+  @override
+  State<ForgotPasswordView> createState() => _ForgotPasswordViewState();
+}
+
+class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   final TextEditingController _emailController = TextEditingController();
-  bool _isLoading = false;
 
-  Future<void> _sendCode() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      _showError('Введите Email');
-      return;
-    }
-    
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(email)) {
-      _showError('Введите корректный Email');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    final result = await _apiService.forgotPassword(email);
-    setState(() => _isLoading = false);
-
-    // Даже если польз. не найден, API возвращает success (из безопасности), 
-    // но если API возвращает ошибку, показываем её.
-    if (result['success']) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Если аккаунт существует, код отправлен на $email'),
-          backgroundColor: const Color(0xFF4CAF50),
-        ),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResetPasswordPage(email: email),
-        ),
-      );
-    } else {
-      _showError(result['message']);
-    }
+  void _sendCode() {
+    context.read<ForgotPasswordBloc>().add(
+      SendCodeRequested(_emailController.text),
+    );
   }
 
   void _showError(String message) {
@@ -73,6 +57,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -89,83 +79,106 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         elevation: 0,
         backgroundColor: Colors.white,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 10),
-              Text(
-                'Забыли пароль?',
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
+      body: BlocConsumer<ForgotPasswordBloc, ForgotPasswordState>(
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            _showError(state.errorMessage!);
+          }
+          if (state.isSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.successMessage ?? 'Код отправлен'),
+                backgroundColor: const Color(0xFF4CAF50),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Введите ваш email, и мы отправим вам 6-значный код для восстановления доступа.',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                ),
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ResetPasswordPage(email: _emailController.text.trim()),
               ),
-              const SizedBox(height: 40),
-              
-              Text(
-                "Email",
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'example@mail.com',
-                  hintStyle: GoogleFonts.poppins(color: Colors.grey[400]),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: SvgPicture.asset(
-                      'assets/images/mail.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+            );
+          }
+        },
+        builder: (context, state) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    'Забыли пароль?',
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
                     ),
                   ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _sendCode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF983296),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 2,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Введите ваш email, и мы отправим вам 6-значный код для восстановления доступа.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      height: 1.5,
+                    ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24, 
-                          width: 24, 
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                        )
-                      : Text(
-                          'Отправить код',
-                          style: GoogleFonts.poppins(
-                              fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                  const SizedBox(height: 40),
+                  
+                  Text(
+                    "Email",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      hintText: 'example@mail.com',
+                      hintStyle: GoogleFonts.poppins(color: Colors.grey[400]),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: SvgPicture.asset(
+                          'assets/images/mail.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                         ),
-                ),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: state.isLoading ? null : _sendCode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF983296),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 2,
+                      ),
+                      child: state.isLoading
+                          ? const SizedBox(
+                              height: 24, 
+                              width: 24, 
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                            )
+                          : Text(
+                              'Отправить код',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

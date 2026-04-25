@@ -24,7 +24,7 @@ class VolunteerProfileDetailsPage extends StatelessWidget {
     final String location = profile['city'] ?? 'Не указан';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [

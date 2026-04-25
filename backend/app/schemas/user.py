@@ -89,7 +89,7 @@ class ProfileOut(ProfileBase):
     social_score: int = 0
     sport_score: int = 0
     cultural_score: int = 0
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -107,7 +107,7 @@ class OrganizationProfileUpdate(OrganizationProfileBase):
 class OrganizationProfileOut(OrganizationProfileBase):
     id: int
     avatar_url: Optional[str] = None
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     class Config:
         from_attributes = True
 

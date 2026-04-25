@@ -6,21 +6,33 @@ import 'welcome_animation_page.dart';
 import 'sign_in_page.dart';
 
 import 'services/api_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'blocs/onboarding/user_onboarding_bloc.dart';
 
-class UserInfoOnboardingPage extends StatefulWidget {
+class UserInfoOnboardingPage extends StatelessWidget {
   const UserInfoOnboardingPage({super.key});
 
   @override
-  State<UserInfoOnboardingPage> createState() => _UserInfoOnboardingPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => UserOnboardingBloc(apiService: ApiService()),
+      child: const _UserInfoOnboardingView(),
+    );
+  }
 }
 
-class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
+class _UserInfoOnboardingView extends StatefulWidget {
+  const _UserInfoOnboardingView();
+
+  @override
+  State<_UserInfoOnboardingView> createState() => _UserInfoOnboardingViewState();
+}
+
+class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
     with TickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
   final PageController _pageController = PageController();
   int _currentPage = 0;
   late AnimationController _progressController;
-  bool _isLoading = false;
 
   // Данные пользователя
   String firstName = '';
@@ -121,35 +133,18 @@ class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
     }
   }
 
-  void _completeOnboarding() async {
-    setState(() => _isLoading = true);
-
-    final profileData = {
-      'full_name': '$firstName $lastName'.trim(),
-      'birth_date': birthDate?.toIso8601String().split('T')[0], // yyyy-mm-dd
-      'gender': gender,
-      'city': city,
-      'phone': phone,
-      'interests': interests,
-      'skills': skills,
-      'experience': experience,
-      'motivation': motivation,
-    };
-
-    final result = await _apiService.updateProfile(profileData);
-
-    setState(() => _isLoading = false);
-
-    if (result['success']) {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const WelcomeAnimationPage(),
-        ),
-      );
-    } else {
-      _showError(result['message']);
-    }
+  void _completeOnboarding() {
+    context.read<UserOnboardingBloc>().add(UpdateField('firstName', firstName));
+    context.read<UserOnboardingBloc>().add(UpdateField('lastName', lastName));
+    if (birthDate != null) context.read<UserOnboardingBloc>().add(UpdateField('birthDate', birthDate));
+    context.read<UserOnboardingBloc>().add(UpdateField('gender', gender));
+    context.read<UserOnboardingBloc>().add(UpdateField('city', city));
+    context.read<UserOnboardingBloc>().add(UpdateField('phone', phone));
+    for(var item in interests) context.read<UserOnboardingBloc>().add(ToggleListField('interests', item));
+    for(var item in skills) context.read<UserOnboardingBloc>().add(ToggleListField('skills', item));
+    context.read<UserOnboardingBloc>().add(UpdateField('experience', experience));
+    context.read<UserOnboardingBloc>().add(UpdateField('motivation', motivation));
+    context.read<UserOnboardingBloc>().add(SubmitOnboarding());
   }
 
   void _showError(String message) {
@@ -183,7 +178,7 @@ class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
     );
 
     if (confirm == true) {
-      await _apiService.logout();
+      await ApiService().logout();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const SignInPage()),
@@ -213,7 +208,20 @@ class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocConsumer<UserOnboardingBloc, UserOnboardingState>(
+    listener: (context, state) {
+      if (state.errorMessage != null) {
+        _showError(state.errorMessage!);
+      }
+      if (state.isSuccess) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const WelcomeAnimationPage()),
+        );
+      }
+    },
+    builder: (context, state) {
+      final isLoading = state.isSubmitting;
+      return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -302,7 +310,7 @@ class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : (_canProceed() ? _nextPage : null),
+                onPressed: isLoading ? null : (_canProceed() ? _nextPage : null),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF983296),
                   disabledBackgroundColor: Colors.grey[300],
@@ -311,7 +319,7 @@ class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
                   ),
                   elevation: 0,
                 ),
-                child: _isLoading
+                child: isLoading
                     ? const SizedBox(
                         height: 20,
                         width: 20,
@@ -333,6 +341,8 @@ class _UserInfoOnboardingPageState extends State<UserInfoOnboardingPage>
           ),
         ],
       ),
+    );
+      },
     );
   }
 

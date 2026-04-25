@@ -5,88 +5,42 @@ import 'dart:ui';
 import 'services/api_service.dart';
 import 'organizer_event_applications_page.dart';
 import 'event_reviews_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'blocs/organizer_events/organizer_events_bloc.dart';
 
-class OrganizerEventsPage extends StatefulWidget {
+class OrganizerEventsPage extends StatelessWidget {
   const OrganizerEventsPage({super.key});
 
   @override
-  State<OrganizerEventsPage> createState() => _OrganizerEventsPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => OrganizerEventsBloc(apiService: ApiService())..add(LoadEvents()),
+      child: const _OrganizerEventsView(),
+    );
+  }
 }
 
-class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
-  final ApiService _apiService = ApiService();
-  List<dynamic> _events = [];
-  bool _isLoading = true;
-  String _filter = 'all'; // all, active, inactive
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+class _OrganizerEventsView extends StatefulWidget {
+  const _OrganizerEventsView({super.key});
 
   @override
-  void initState() {
-    super.initState();
-    _loadEvents();
-  }
+  State<_OrganizerEventsView> createState() => _OrganizerEventsViewState();
+}
+
+class _OrganizerEventsViewState extends State<_OrganizerEventsView> {
+  final TextEditingController _searchController = TextEditingController();
+
 
   Future<void> _loadEvents() async {
-    setState(() => _isLoading = true);
-    final result = await _apiService.getMyEvents();
-    if (mounted) {
-      setState(() {
-        if (result['success']) {
-          _events = result['data'];
-        }
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<dynamic> get filteredEvents {
-    List<dynamic> filtered = _events;
-    
-    // Filter by status
-    if (_filter == 'active') {
-      filtered = filtered.where((e) => e['is_active'] == true).toList();
-    } else if (_filter == 'inactive') {
-      filtered = filtered.where((e) => e['is_active'] == false).toList();
-    }
-
-    // Filter by search
-    if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((e) => 
-        (e['title'] ?? '').toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        (e['location'] ?? '').toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
-    }
-    
-    return filtered;
+    context.read<OrganizerEventsBloc>().add(LoadEvents());
   }
 
   Future<void> _toggleStatus(int eventId) async {
-    final result = await _apiService.toggleEventStatus(eventId);
-    if (result['success']) {
-      _loadEvents();
-      if (mounted) {
-        _showSuccessSnackBar('Статус ивента обновлен!', const Color(0xFF983296));
-      }
-    } else {
-      if (mounted) {
-        _showErrorSnackBar('Ошибка: ${result['message']}');
-      }
-    }
+    context.read<OrganizerEventsBloc>().add(ToggleEventStatusEvent(eventId));
   }
 
   Future<void> _finishEvent(int eventId) async {
-    final result = await _apiService.finishEvent(eventId);
-    if (result['success']) {
-      _loadEvents();
-      if (mounted) {
-        _showSuccessSnackBar('Ивент успешно завершен! 🎉\nЧасы начислены волонтерам.', const Color(0xFF00BFA5));
-      }
-    } else {
-      if (mounted) {
-        _showErrorSnackBar('Ошибка: ${result['message']}');
-      }
-    }
+    context.read<OrganizerEventsBloc>().add(FinishEventEvent(eventId));
   }
 
   Future<void> _showFinishDialog(int eventId, String title) async {
@@ -158,8 +112,17 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+    return BlocConsumer<OrganizerEventsBloc, OrganizerEventsState>(
+      listener: (context, state) {
+        if (state.isSuccessAction && state.successMessage != null) {
+          _showSuccessSnackBar(state.successMessage!, const Color(0xFF00BFA5));
+        } else if (state.errorMessage != null) {
+          _showErrorSnackBar(state.errorMessage!);
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // Background Decorative Elements
@@ -193,13 +156,13 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
-                _buildSearchBar(),
-                _buildFilters(),
+                _buildSearchBar(state),
+                _buildFilters(state),
                 const SizedBox(height: 16),
                 Expanded(
-                  child: _isLoading
+                  child: state.isLoading
                       ? _buildLoadingState()
-                      : filteredEvents.isEmpty
+                      : state.filteredEvents.isEmpty
                           ? _buildEmptyState()
                           : RefreshIndicator(
                               onRefresh: _loadEvents,
@@ -207,10 +170,10 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
                               edgeOffset: 20,
                               child: ListView.builder(
                                 padding: const EdgeInsets.only(left: 24, right: 24, bottom: 100),
-                                itemCount: filteredEvents.length,
+                                itemCount: state.filteredEvents.length,
                                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                                 itemBuilder: (context, index) {
-                                  final event = filteredEvents[index];
+                                  final event = state.filteredEvents[index];
                                   return _buildModernEventCard(event, index);
                                 },
                               ),
@@ -221,7 +184,9 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
           ),
         ],
       ),
-      floatingActionButton: _isLoading ? null : _buildFAB(),
+      floatingActionButton: state.isLoading ? null : _buildFAB(),
+        );
+      },
     );
   }
 
@@ -389,7 +354,7 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
                     color: const Color(0xFFF5F5F5),
                     child: imageUrl != null && imageUrl.isNotEmpty
                         ? Image.network(
-                            'http://127.0.0.1:8000$imageUrl',
+                            'http://127.0.0.1:8080$imageUrl',
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
                           )
@@ -891,7 +856,7 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(OrganizerEventsState state) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Container(
@@ -903,18 +868,18 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
         ),
         child: TextField(
           controller: _searchController,
-          onChanged: (value) => setState(() => _searchQuery = value),
+          onChanged: (value) => context.read<OrganizerEventsBloc>().add(UpdateSearchQuery(value)),
           style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF0D0D26)),
           decoration: InputDecoration(
             hintText: 'Поиск...',
             hintStyle: GoogleFonts.poppins(color: const Color(0xFF95969D), fontSize: 13),
             prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF95969D), size: 18),
-            suffixIcon: _searchQuery.isNotEmpty 
+            suffixIcon: state.searchQuery.isNotEmpty 
               ? IconButton(
                   icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF95969D)),
                   onPressed: () {
                     _searchController.clear();
-                    setState(() => _searchQuery = '');
+                    context.read<OrganizerEventsBloc>().add(UpdateSearchQuery(''));
                   },
                 )
               : null,
@@ -926,7 +891,7 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
     );
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(OrganizerEventsState state) {
     final filters = [
       {'label': 'Все', 'value': 'all'},
       {'label': 'Активные', 'value': 'active'},
@@ -938,9 +903,9 @@ class _OrganizerEventsPageState extends State<OrganizerEventsPage> {
       physics: const BouncingScrollPhysics(),
       child: Row(
         children: filters.map((f) {
-          final isSelected = _filter == f['value'];
+          final isSelected = state.filter == f['value'];
           return GestureDetector(
-            onTap: () => setState(() => _filter = f['value']!),
+            onTap: () => context.read<OrganizerEventsBloc>().add(UpdateFilter(f['value']!)),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(right: 8),

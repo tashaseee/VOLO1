@@ -11,125 +11,57 @@ import 'package:volo/notifications_page.dart';
 import 'package:volo/user_info_page.dart';
 import 'package:volo/event_detail_page.dart';
 import 'bottom_nav_bar.dart';
+import 'chats_page.dart';
 import 'services/api_service.dart';
 import 'login_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'blocs/profile/profile_bloc.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ProfileBloc(apiService: ApiService())..add(LoadProfile()),
+      child: const _ProfilePageView(),
+    );
+  }
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  final ApiService _apiService = ApiService();
-  int _selectedIndex = 4;
-  Map<String, bool> _ratedEvents = {};
-  bool _isLoading = true;
-  String _userName = 'Загрузка...';
-  String _userCity = 'Загрузка...';
-  int _voloHours = 0;
-  int _eventsDone = 0;
-  int _ecoScore = 0;
-  int _socialScore = 0;
-  int _sportScore = 0;
-  List<dynamic> _certificates = [];
-  List<dynamic> _activeEvents = []; 
-  List<dynamic> _plannedEvents = [];
-  String? _avatarUrl;
-  final ImagePicker _picker = ImagePicker();
+class _ProfilePageView extends StatefulWidget {
+  const _ProfilePageView();
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-    _fetchCertificates();
-    _loadMyEvents();
-  }
+  State<_ProfilePageView> createState() => _ProfilePageViewState();
+}
 
-  Future<void> _loadMyEvents() async {
-    final result = await _apiService.getMyApplications();
-    if (result['success']) {
-      final apps = result['data'] as List;
-      if (mounted) {
-        setState(() {
-          _activeEvents = apps.where((a) => a['status'] == 'approved' && (a['status'] != 'completed')).toList();
-          _plannedEvents = apps.where((a) => a['status'] == 'pending').toList();
-        });
-      }
-    }
-  }
-
-  Future<void> _loadUserProfile() async {
-    final result = await _apiService.getUserProfile();
-    if (!mounted) return;
-    if (result['success']) {
-      final data = result['data'];
-      setState(() {
-        _userName = data['profile']?['full_name'] ?? 'Имя не указано';
-        _userCity = data['profile']?['city'] ?? 'Город не указан';
-        _voloHours = data['profile']?['volo_hours'] ?? 0;
-        _eventsDone = data['profile']?['events_done'] ?? 0;
-        _ecoScore = data['profile']?['eco_score'] ?? 0;
-        _socialScore = data['profile']?['social_score'] ?? 0;
-        _sportScore = data['profile']?['sport_score'] ?? 0;
-        _avatarUrl = data['profile']?['avatar_url'];
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _userName = 'Ошибка загрузки';
-        _userCity = '';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _fetchCertificates() async {
-    final result = await _apiService.getMyCertificates();
-    if (result['success']) {
-      if (mounted) {
-        setState(() {
-          _certificates = result['data'];
-        });
-      }
-    }
-  }
+class _ProfilePageViewState extends State<_ProfilePageView> {
+  int _selectedIndex = 4;
+  final ImagePicker _picker = ImagePicker();
+  final ApiService _apiService = ApiService();
 
   Future<void> _pickAndUploadImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
-
     if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
+      context.read<ProfileBloc>().add(UpdateAvatar(image.path));
     }
-
-    final result = await _apiService.uploadAvatar(image.path);
-    if (!mounted) return;
-    
-    if (result['success']) {
-      setState(() {
-        _avatarUrl = result['data']['avatar_url'];
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Аватар обновлен')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Ошибка загрузки')),
-      );
-    }
-    
-    setState(() {
-      _isLoading = false;
-    });
   }
+
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocConsumer<ProfileBloc, ProfileState>(
+      listener: (context, state) {
+        if (state.message != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message!)),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
@@ -165,18 +97,18 @@ class _ProfilePageState extends State<ProfilePage> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.grey[300],
-                              image: _avatarUrl != null
+                              image: state.avatarUrl != null
                                   ? DecorationImage(
                                       image: NetworkImage(
-                                        _avatarUrl!.startsWith('http')
-                                            ? _avatarUrl!
-                                            : '${ApiService.baseUrl}${_avatarUrl!}',
+                                        state.avatarUrl!.startsWith('http')
+                                            ? state.avatarUrl!
+                                            : '${ApiService.baseUrl}${state.avatarUrl!}',
                                       ),
                                       fit: BoxFit.cover,
                                     )
                                   : null,
                             ),
-                            child: _avatarUrl == null
+                            child: state.avatarUrl == null
                                 ? ClipOval(
                                     child: Image.asset(
                                       'assets/images/us.png',
@@ -225,7 +157,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _userName,
+                              state.userName,
                               style: GoogleFonts.poppins(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
@@ -234,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _userCity,
+                              state.userCity,
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w400,
@@ -262,26 +194,28 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Твои Volo-часы:',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white70,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Твои Volo-часы:',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white70,
+                                ),
                               ),
-                            ),
-                            Text(
-                              _voloHours.toString(),
-                              style: GoogleFonts.poppins(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                              Text(
+                                state.voloHours.toString(),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         Container(
                           decoration: BoxDecoration(
@@ -385,16 +319,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: _buildStatItem(_eventsDone.toString(), 'Волонтёр')),
-                        Expanded(child: _buildStatItem(_ecoScore.toString(), 'Эко')),
-                        Expanded(child: _buildStatItem(_sportScore.toString(), 'Спорт')),
+                        Expanded(child: _buildStatItem(state.eventsDone.toString(), 'Волонтёр')),
+                        Expanded(child: _buildStatItem(state.ecoScore.toString(), 'Эко')),
+                        Expanded(child: _buildStatItem(state.sportScore.toString(), 'Спорт')),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
                   // События в процессе (Approved)
-                  if (_activeEvents.isNotEmpty) ...[
+                  if (state.activeEvents.isNotEmpty) ...[
                     Text(
                       'Ваши активные ивенты',
                       style: GoogleFonts.poppins(
@@ -404,7 +338,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ..._activeEvents.map((app) {
+                    ...state.activeEvents.map((app) {
                        final event = app['event']; // Assuming nested event object from backend or need join
                        // Backend getMyApplications returns list of applications. Usually user applications include event data?
                        // Checking backend... ApplicationOut schema includes event: EventOut. Yes.
@@ -445,7 +379,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
 
                   // Запланированные (Pending)
-                  if (_plannedEvents.isNotEmpty) ...[
+                  if (state.plannedEvents.isNotEmpty) ...[
                     Text(
                       'Заявки на рассмотрении',
                       style: GoogleFonts.poppins(
@@ -455,7 +389,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ..._plannedEvents.map((app) {
+                    ...state.plannedEvents.map((app) {
                        final event = app['event'];
                        return Padding(
                          padding: const EdgeInsets.only(bottom: 12),
@@ -494,7 +428,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 24),
 
                   // Мои сертификаты
-                  if (_certificates.isNotEmpty) ...[
+                  if (state.certificates.isNotEmpty) ...[
                     Text(
                       'Мои сертификаты',
                       style: GoogleFonts.poppins(
@@ -508,7 +442,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: Row(
-                        children: _certificates.map((cert) {
+                        children: state.certificates.map((cert) {
                           return Padding(
                             padding: const EdgeInsets.only(right: 12),
                             child: _buildCertificateCard(cert),
@@ -593,6 +527,8 @@ class _ProfilePageState extends State<ProfilePage> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
+    );
+      },
     );
   }
 
@@ -914,46 +850,19 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
 
     switch (index) {
       case 0:
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const NotificationsPage(),
-            transitionDuration: Duration.zero,
-          ),
-        );
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const NotificationsPage(), transitionDuration: Duration.zero));
         break;
       case 1:
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const SearchPage(),
-            transitionDuration: Duration.zero,
-          ),
-        );
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero));
         break;
       case 2:
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const HomePage(),
-            transitionDuration: Duration.zero,
-          ),
-        );
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const HomePage(), transitionDuration: Duration.zero));
         break;
       case 3:
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const MyApplicationsPage(),
-            transitionDuration: Duration.zero,
-          ),
-        );
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatsPage(), transitionDuration: Duration.zero));
         break;
       case 4:
         break;
@@ -1101,7 +1010,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _handleCertificate(String eventName, String organizer, String date) {
     final eventKey = '$eventName-$organizer';
-    if (_ratedEvents[eventKey] == true) {
+    final rated = context.read<ProfileBloc>().state.ratedEvents[eventKey] == true;
+    if (rated) {
       _showCertificateDialog(eventName, organizer, date);
     } else {
       _showRatingDialog(eventName, organizer, date, eventKey);
@@ -1220,7 +1130,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               padding: const EdgeInsets.symmetric(horizontal: 2),
                               child: Icon(
                                 index < eventRating ? Icons.star : Icons.star_border,
-                                size: 30,
+                                size: 24,
                                 color: const Color(0xFF983296),
                               ),
                             ),
@@ -1306,7 +1216,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               padding: const EdgeInsets.symmetric(horizontal: 2),
                               child: Icon(
                                 index < orgRating ? Icons.star : Icons.star_border,
-                                size: 30,
+                                size: 24,
                                 color: const Color(0xFF983296),
                               ),
                             ),
@@ -1360,9 +1270,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: ElevatedButton(
                         onPressed: () {
                           if (eventRating > 0 && orgRating > 0) {
-                            setState(() {
-                              _ratedEvents[eventKey] = true;
-                            });
+                            context.read<ProfileBloc>().add(RateEvent(eventKey));
                             Navigator.pop(context);
                             _showCertificateDialog(eventName, organizer, date);
                           } else {

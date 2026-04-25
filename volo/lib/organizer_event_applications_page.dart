@@ -4,8 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
 import 'services/api_service.dart';
 import 'volunteer_profile_details_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'blocs/organizer_event_applications/organizer_event_applications_bloc.dart';
 
-class OrganizerEventApplicationsPage extends StatefulWidget {
+class OrganizerEventApplicationsPage extends StatelessWidget {
   final int eventId;
   final String eventTitle;
 
@@ -16,14 +18,28 @@ class OrganizerEventApplicationsPage extends StatefulWidget {
   });
 
   @override
-  State<OrganizerEventApplicationsPage> createState() => _OrganizerEventApplicationsPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => OrganizerEventAppsBloc(apiService: ApiService())..add(LoadEventApps(eventId)),
+      child: _OrganizerEventApplicationsView(eventId: eventId, eventTitle: eventTitle),
+    );
+  }
 }
 
-class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicationsPage> with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  List<dynamic> _applications = [];
-  Map<String, dynamic>? _event;
-  bool _isLoading = true;
+class _OrganizerEventApplicationsView extends StatefulWidget {
+  final int eventId;
+  final String eventTitle;
+
+  const _OrganizerEventApplicationsView({
+    required this.eventId,
+    required this.eventTitle,
+  });
+
+  @override
+  State<_OrganizerEventApplicationsView> createState() => _OrganizerEventApplicationsViewState();
+}
+
+class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicationsView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -40,47 +56,16 @@ class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicati
   }
 
   Future<void> _loadApplications() async {
-    setState(() => _isLoading = true);
-    
-    // Fetch applications and event details in parallel
-    final results = await Future.wait([
-      _apiService.getEventApplications(widget.eventId),
-      _apiService.getMyEvents(), // To find the specific event and its chat link
-    ]);
-
-    final appsResult = results[0];
-    final eventsResult = results[1];
-
-    if (mounted) {
-      setState(() {
-        if (appsResult['success']) {
-          _applications = appsResult['data'];
-        }
-        if (eventsResult['success']) {
-          final events = eventsResult['data'] as List;
-          _event = events.firstWhere((e) => e['id'] == widget.eventId, orElse: () => null);
-        }
-        _isLoading = false;
-      });
-    }
+    context.read<OrganizerEventAppsBloc>().add(LoadEventApps(widget.eventId));
   }
 
   Future<void> _updateStatus(int applicationId, String status, {Map<String, dynamic>? app}) async {
-    final result = await _apiService.updateApplicationStatus(applicationId, status);
-    if (result['success']) {
-      await _loadApplications();
-      if (mounted) {
-        if (status == 'approved') {
-          _showAcceptanceDialog(app?['user']);
-        } else {
-          _showSuccessSnackBar('Заявка отклонена ❌', Colors.red);
-        }
-      }
-    } else {
-      if (mounted) {
-        _showErrorSnackBar('Ошибка: ${result['message']}');
-      }
-    }
+    context.read<OrganizerEventAppsBloc>().add(UpdateAppStatus(
+      eventId: widget.eventId,
+      applicationId: applicationId,
+      status: status,
+      appData: app,
+    ));
   }
 
   Future<void> _finishEvent() async {
@@ -112,23 +97,14 @@ class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicati
     );
 
     if (confirmed == true) {
-      setState(() => _isLoading = true);
-      final result = await _apiService.finishEvent(widget.eventId);
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (result['success']) {
-          _showSuccessSnackBar(result['message'] ?? 'Ивент успешно завершен!', Colors.green);
-        } else {
-          _showErrorSnackBar(result['message'] ?? 'Ошибка завершения');
-        }
-      }
+      context.read<OrganizerEventAppsBloc>().add(FinishEvent(widget.eventId));
     }
   }
 
-  void _showAcceptanceDialog(Map<String, dynamic>? user) {
+  void _showAcceptanceDialog(Map<String, dynamic>? user, Map<String, dynamic>? event) {
     final profile = user?['profile'];
     final name = profile?['full_name'] ?? user?['email'] ?? 'Волонтер';
-    final chatLinkStr = _event?['chat_link'] ?? 'https://t.me/volo_chat_example';
+    final chatLinkStr = event?['chat_link'] ?? 'https://t.me/volo_chat_example';
 
     showDialog(
       context: context,
@@ -239,18 +215,31 @@ class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicati
     );
   }
 
-  List<dynamic> get pendingApplications =>
-      _applications.where((a) => a['status'] == 'pending').toList();
   
-  List<dynamic> get approvedApplications =>
-      _applications.where((a) => a['status'] == 'approved').toList();
   
-  List<dynamic> get rejectedApplications =>
-      _applications.where((a) => a['status'] == 'rejected').toList();
+  
+  
+  
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocConsumer<OrganizerEventAppsBloc, OrganizerEventAppsState>(
+      listener: (context, state) {
+        if (state.errorMessage != null) {
+          _showErrorSnackBar(state.errorMessage!);
+        } else if (state.isSuccessAction && state.successMessage != null) {
+          _showSuccessSnackBar(state.successMessage!, Colors.green);
+        }
+        if (state.showAcceptanceDialog && state.acceptedUser != null) {
+          _showAcceptanceDialog(state.acceptedUser, state.event);
+        }
+      },
+      builder: (context, state) {
+        final pendingApplications = state.applications.where((a) => a['status'] == 'pending').toList();
+        final approvedApplications = state.applications.where((a) => a['status'] == 'approved').toList();
+        final rejectedApplications = state.applications.where((a) => a['status'] == 'rejected').toList();
+
+        return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       body: Stack(
         children: [
@@ -285,10 +274,10 @@ class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicati
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
-                _buildTabSection(),
+                _buildTabSection(pendingApplications, approvedApplications, rejectedApplications),
                 const SizedBox(height: 16),
                 Expanded(
-                  child: _isLoading
+                  child: state.isLoading
                       ? _buildLoadingState()
                       : TabBarView(
                           controller: _tabController,
@@ -305,7 +294,9 @@ class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicati
         ],
       ),
     );
-  }
+  },
+  );
+}
 
   Widget _buildHeader() {
     return Padding(
@@ -408,7 +399,7 @@ class _OrganizerEventApplicationsPageState extends State<OrganizerEventApplicati
     );
   }
 
-  Widget _buildTabSection() {
+  Widget _buildTabSection(List pendingApplications, List approvedApplications, List rejectedApplications) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 28),
       height: 52,

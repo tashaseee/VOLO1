@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'services/api_service.dart';
+import 'blocs/application_confirmation/application_confirmation_bloc.dart';
 
-class ApplicationConfirmationPage extends StatefulWidget {
+class ApplicationConfirmationPage extends StatelessWidget {
   final String eventTitle;
   final String organizer;
   final String date;
@@ -19,14 +21,40 @@ class ApplicationConfirmationPage extends StatefulWidget {
   });
 
   @override
-  State<ApplicationConfirmationPage> createState() => _ApplicationConfirmationPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ApplicationConfirmationBloc(apiService: ApiService()),
+      child: _ApplicationConfirmationView(
+        eventTitle: eventTitle,
+        organizer: organizer,
+        date: date,
+        location: location,
+        eventId: eventId,
+      ),
+    );
+  }
 }
 
-class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPage> with SingleTickerProviderStateMixin {
-  final ApiService _apiService = ApiService();
-  bool _isSubmitting = false;
-  bool _isSuccess = false;
-  bool _agreed = false;
+class _ApplicationConfirmationView extends StatefulWidget {
+  final String eventTitle;
+  final String organizer;
+  final String date;
+  final String location;
+  final int eventId;
+
+  const _ApplicationConfirmationView({
+    required this.eventTitle,
+    required this.organizer,
+    required this.date,
+    required this.location,
+    required this.eventId,
+  });
+
+  @override
+  State<_ApplicationConfirmationView> createState() => _ApplicationConfirmationViewState();
+}
+
+class _ApplicationConfirmationViewState extends State<_ApplicationConfirmationView> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
@@ -49,34 +77,6 @@ class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPag
     super.dispose();
   }
 
-  Future<void> _submitApplication() async {
-    setState(() => _isSubmitting = true);
-
-    // Simulate a small delay for better UX if the API is too fast
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    final result = await _apiService.applyToEvent(widget.eventId);
-
-    if (mounted) {
-      if (result['success']) {
-        setState(() {
-          _isSubmitting = false;
-          _isSuccess = true;
-        });
-        _animationController.forward();
-        
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) {
-            Navigator.pop(context, true);
-          }
-        });
-      } else {
-        setState(() => _isSubmitting = false);
-        _showErrorSnackBar(result['message'] ?? 'Ошибка при подаче заявки');
-      }
-    }
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -94,35 +94,51 @@ class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPag
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent, // Background handled by barrierColor
-      body: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
+    return BlocConsumer<ApplicationConfirmationBloc, ApplicationConfirmationState>(
+      listener: (context, state) {
+        if (state.errorMessage != null) {
+          _showErrorSnackBar(state.errorMessage!);
+        } else if (state.isSuccess) {
+          _animationController.forward();
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              Navigator.pop(context, true);
+            }
+          });
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: Colors.transparent, // Background handled by barrierColor
+          body: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-            ],
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: state.isSuccess ? _buildSuccessView() : _buildConfirmationView(state),
+              ),
+            ),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: _isSuccess ? _buildSuccessView() : _buildConfirmationView(),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildConfirmationView() {
+  Widget _buildConfirmationView(ApplicationConfirmationState state) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -245,18 +261,18 @@ class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPag
 
               // Agreement Checkbox
               GestureDetector(
-                onTap: () => setState(() => _agreed = !_agreed),
+                onTap: () => context.read<ApplicationConfirmationBloc>().add(ToggleAgreement()),
                 child: Row(
                   children: [
                     SizedBox(
                       height: 24,
                       width: 24,
                       child: Checkbox(
-                        value: _agreed,
-                        onChanged: (val) => setState(() => _agreed = val!),
+                        value: state.agreed,
+                        onChanged: (val) => context.read<ApplicationConfirmationBloc>().add(ToggleAgreement()),
                         activeColor: const Color(0xFF983296),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
+                    ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -280,7 +296,7 @@ class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPag
                 children: [
                   Expanded(
                     child: TextButton(
-                      onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                      onPressed: state.isSubmitting ? null : () => Navigator.pop(context),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -300,7 +316,7 @@ class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPag
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: (_isSubmitting || !_agreed) ? null : _submitApplication,
+                      onPressed: (state.isSubmitting || !state.agreed) ? null : () => context.read<ApplicationConfirmationBloc>().add(SubmitApplication(widget.eventId)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF983296),
                         foregroundColor: Colors.white,
@@ -312,7 +328,7 @@ class _ApplicationConfirmationPageState extends State<ApplicationConfirmationPag
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: _isSubmitting
+                      child: state.isSubmitting
                           ? const SizedBox(
                               height: 20,
                               width: 20,

@@ -129,34 +129,62 @@ async def update_application_status(
     db.commit()
     db.refresh(application)
     
-    # Notify user via email
     user = db.query(user_models.User).filter(user_models.User.id == application.user_id).first()
     if user:
         await send_application_status_email(user.email, event.title, status_update.status)
         
-        # Create in-app notification
         from app.models.notification import Notification
-        
+        from app.models.chat import Chat
+
         if status_update.status == "approved":
-            title = "Заявка одобрена! 🎉"
-            message = f"Ваша заявка на '{event.title}' одобрена! Обязательно вступите в чат участников: {event.chat_link}"
-            notif_type = "success"
+            # ── 1. Создаём или находим чат события ──────────────────────────
+            chat = db.query(Chat).filter(Chat.event_id == event.id).first()
+            if not chat:
+                chat = Chat(
+                    event_id=event.id,
+                    name=event.title,
+                    avatar_url=event.image_url,
+                )
+                db.add(chat)
+                db.flush()  # получаем chat.id
+
+                # Добавляем организатора в чат
+                organizer = db.query(user_models.User).filter(user_models.User.id == event.organizer_id).first()
+                if organizer and organizer not in chat.participants:
+                    chat.participants.append(organizer)
+
+            # Добавляем волонтёра в чат
+            if user not in chat.participants:
+                chat.participants.append(user)
+
+            db.commit()
+
+            # ── 2. Красивое уведомление ─────────────────────────────────────
+            notification = Notification(
+                user_id=user.id,
+                title="Вы приняты! 🎉",
+                message=f"Поздравляем! Вы стали волонтёром на мероприятии «{event.title}». Вас добавили в чат участников — заходите и знакомьтесь с командой!",
+                type="approved",
+                related_id=chat.id,   # ← ID чата для прямого перехода
+            )
+
         elif status_update.status == "rejected":
-            title = "Заявка отклонена"
-            message = f"К сожалению, ваша заявка на мероприятие '{event.title}' была отклонена."
-            notif_type = "error"
+            notification = Notification(
+                user_id=user.id,
+                title="Заявка отклонена",
+                message=f"К сожалению, ваша заявка на мероприятие «{event.title}» была отклонена.",
+                type="error",
+                related_id=application.id,
+            )
         else:
-            title = "Статус заявки обновлен"
-            message = f"Статус вашей заявки на мероприятие '{event.title}' изменился на: {status_update.status}."
-            notif_type = "info"
-        
-        notification = Notification(
-            user_id=user.id,
-            title=title,
-            message=message,
-            type=notif_type,
-            related_id=application.id
-        )
+            notification = Notification(
+                user_id=user.id,
+                title="Статус заявки обновлён",
+                message=f"Статус вашей заявки на «{event.title}» изменился на: {status_update.status}.",
+                type="info",
+                related_id=application.id,
+            )
+
         db.add(notification)
         db.commit()
     
@@ -181,6 +209,29 @@ def apply_to_event(event_id: int, db: Session = Depends(get_db), current_user: u
     db.add(new_application)
     db.commit()
     db.refresh(new_application)
+    
+    # Create notification for the volunteer
+    from app.models.notification import Notification
+    user_notif = Notification(
+        user_id=current_user.id,
+        title="Заявка подана",
+        message=f"Ваша заявка на мероприятие '{event.title}' успешно отправлена. Ожидайте ответа от организатора.",
+        type="info",
+        related_id=new_application.id
+    )
+    db.add(user_notif)
+    
+    # Create notification for the organizer
+    org_notif = Notification(
+        user_id=event.organizer_id,
+        title="Новая заявка",
+        message=f"Поступила новая заявка на ваше мероприятие '{event.title}'.",
+        type="info",
+        related_id=new_application.id
+    )
+    db.add(org_notif)
+    db.commit()
+    
     return new_application
 
 @router.get("/my-applications", response_model=List[schemas.ApplicationOut])

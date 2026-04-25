@@ -23,7 +23,7 @@ class EventCreate(EventBase):
 class EventOut(EventBase):
     id: int
     is_active: bool
-    created_at: datetime
+    created_at: Optional[datetime] = None
     organizer_id: Optional[int] = None
     approved_count: int = 0
 
@@ -43,9 +43,9 @@ from .user import UserOut
 
 class ApplicationOut(ApplicationBase):
     id: int
-    user_id: int
-    status: str
-    created_at: datetime
+    user_id: Optional[int] = None
+    status: Optional[str] = "pending"
+    created_at: Optional[datetime] = None
     event: Optional[EventOut] = None
     user: Optional[UserOut] = None
 
@@ -55,7 +55,7 @@ class ApplicationOut(ApplicationBase):
 class CertificateOut(BaseModel):
     id: int
     event_name: str
-    issue_date: datetime
+    issue_date: Optional[datetime] = None
     certificate_url: Optional[str] = None
 
     class Config:

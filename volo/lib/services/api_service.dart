@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://10.202.7.234:8080';
+  static const String baseUrl = 'http://127.0.0.1:8080';
 
   // Регистрация
   Future<Map<String, dynamic>> register(String email, String password, {String role = 'volunteer', String? orgName, String? bin}) async {
@@ -53,7 +53,7 @@ class ApiService {
       return result;
     } catch (e, stackTrace) {
       print('❌ LOGIN ERROR: $e');
-        print('💡 СОВЕТ: Проверьте, что VPN ВЫКЛЮЧЕН на Mac и на iPhone. Mac IP: 10.202.7.234');
+        print('💡 СОВЕТ: Проверьте, что VPN ВЫКЛЮЧЕН на Mac и на iPhone. Mac IP: 10.202.8.194');
       return {'success': false, 'message': 'Ошибка сети: $e'};
     }
   }
@@ -498,6 +498,68 @@ class ApiService {
       final token = prefs.getString('token');
       final response = await http.delete(
         Uri.parse('$baseUrl/notifications/$notificationId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // ─── Чаты ────────────────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getMyChats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/chats/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getChatMessages(int chatId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/chats/$chatId/messages'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> sendChatMessage(int chatId, String text) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/chats/$chatId/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'text': text}),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getChatParticipants(int chatId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/chats/$chatId/participants'),
         headers: {'Authorization': 'Bearer $token'},
       );
       return _handleResponse(response);

@@ -8,29 +8,37 @@ import 'package:volo/event_detail_page.dart';
 import 'package:volo/my_applications_page.dart';
 import 'package:volo/search_page.dart';
 import 'package:volo/notifications_page.dart';
+import 'package:volo/ai_chat_page.dart';
+import 'package:volo/chats_page.dart';
 import 'bottom_nav_bar.dart';
 import 'services/api_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'blocs/home/home_bloc.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => HomeBloc(apiService: ApiService())..add(LoadHomeData()),
+      child: const HomeView(),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
-  final ApiService _apiService = ApiService();
-  int _selectedIndex = 2;
-  String _userName = 'Загрузка...';
-  int _voloHours = 0;
-  String? _avatarUrl;
-  bool _isLoading = true;
-  List<dynamic> _events = [];
+class HomeView extends StatefulWidget {
+  const HomeView({super.key});
+
+  @override
+  State<HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<HomeView> {
 
   final PageController _pageController = PageController(viewportFraction: 1.0);
   int _currentPage = 0;
 
-  int _currentAdIndex = 0;
   final PageController _adController = PageController();
   final List<String> adImages = [
     'assets/images/zhar.png',
@@ -40,8 +48,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
-    _fetchEvents();
     _pageController.addListener(() {
       int next = _pageController.page!.round();
       if (_currentPage != next) {
@@ -51,39 +57,9 @@ class _HomePageState extends State<HomePage> {
     Future.delayed(const Duration(seconds: 4), _autoScrollAds);
   }
 
-  Future<void> _loadUserProfile() async {
-    final result = await _apiService.getUserProfile();
-    if (!mounted) return;
-    if (result['success']) {
-      final data = result['data'];
-      setState(() {
-        _userName = data['profile']?['full_name'] ?? 'Волонтер';
-        _voloHours = data['profile']?['volo_hours'] ?? 0;
-        _avatarUrl = data['profile']?['avatar_url'];
-        _isLoading = false;
-      });
-    } else {
-      if (!mounted) return;
-      setState(() {
-        _userName = 'Волонтер';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _fetchEvents() async {
-    final result = await _apiService.getEvents();
-    if (!mounted) return;
-    if (result['success']) {
-      setState(() {
-        _events = result['data'];
-      });
-    }
-  }
-
   void _autoScrollAds() {
     if (!mounted) return;
-    final nextPage = (_currentAdIndex + 1) % adImages.length;
+    final nextPage = (context.read<HomeBloc>().state.currentAdIndex + 1) % adImages.length;
     _adController.animateToPage(
       nextPage,
       duration: const Duration(milliseconds: 400),
@@ -108,211 +84,241 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 40),
-                  Row(
+    return BlocBuilder<HomeBloc, HomeState>(
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SvgPicture.asset(
-                        'assets/images/VOLO-2.svg',
-                        height: 21,
-                        colorFilter: const ColorFilter.mode(Color(0xFF983296), BlendMode.srcIn),
+                      const SizedBox(height: 40),
+                      Row(
+                        children: [
+                          SvgPicture.asset('assets/images/VOLO-2.svg', height: 21,
+                            colorFilter: const ColorFilter.mode(Color(0xFF983296), BlendMode.srcIn)),
+                          const Spacer(),
+                        ],
                       ),
-                      const Spacer(),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Добро пожаловать!', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w300, color: const Color(0xFF95969D))),
-                            const SizedBox(height: 4),
-                            Text(_userName, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w500, color: const Color(0xFF0D0D26))),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle, 
-                          color: Colors.grey[200],
-                          image: _avatarUrl != null
-                              ? DecorationImage(
-                                  image: NetworkImage(
-                                    _avatarUrl!.startsWith('http')
-                                        ? _avatarUrl!
-                                        : '${ApiService.baseUrl}${_avatarUrl!}',
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: _avatarUrl == null
-                            ? ClipOval(child: Image.asset('assets/images/us.png', width: 54, height: 54, fit: BoxFit.cover))
-                            : null,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Volo-часы
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFB856B8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Твои Volo-часы:', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.white70)),
-                            Text(_voloHours.toString(), style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.w600, color: Colors.white)),
-                          ],
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pushNamed(context, '/volo_history'),
-                          child: Container(
-                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Text('История', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF983296))),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-                  // Рекламный блок
-                  SizedBox(
-                    height: 93,
-                    child: Stack(
-                      children: [
-                        PageView.builder(
-                          controller: _adController,
-                          onPageChanged: (i) => setState(() => _currentAdIndex = i),
-                          itemCount: adImages.length,
-                          itemBuilder: (context, index) => Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 0),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.asset(adImages[index], fit: BoxFit.cover, width: double.infinity, height: 93,
-                                errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: Center(child: Text('Ошибка', style: GoogleFonts.poppins(color: Colors.red)))),
-                              ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Добро пожаловать!', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w300, color: const Color(0xFF95969D))),
+                                const SizedBox(height: 4),
+                                Text(state.userName, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w500, color: const Color(0xFF0D0D26))),
+                              ],
                             ),
                           ),
-                        ),
-                        Positioned(
-                          bottom: 8, left: 0, right: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(adImages.length, (i) => AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: _currentAdIndex == i ? const Color(0xFF983296) : Colors.grey[400]),
-                            )),
+                          const SizedBox(width: 16),
+                          Container(
+                            width: 54, height: 54,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey[200],
+                              image: state.avatarUrl != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(
+                                        state.avatarUrl!.startsWith('http')
+                                            ? state.avatarUrl!
+                                            : '${ApiService.baseUrl}${state.avatarUrl!}',
+                                      ),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: state.avatarUrl == null
+                                ? ClipOval(child: Image.asset('assets/images/us.png', width: 54, height: 54, fit: BoxFit.cover))
+                                : null,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                  Text('Интересные предложения', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
-                  const SizedBox(height: 12),
-
-                  SizedBox(
-                    height: 200,
-                    child: _events.isEmpty
-                        ? _buildEmptyOffersPlaceholder()
-                        : ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            itemCount: _events.length > 5 ? 5 : _events.length,
-                            itemBuilder: (context, index) {
-                              final event = _events[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: GestureDetector(
-                                  onTap: () => _navigateToEventDetail(event),
-                                  child: _buildEventCard(
-                                    event['date_text'] ?? 'Скоро',
-                                    event['title'],
-                                    event['organizer'] ?? 'Организатор',
-                                    true,
-                                    event['image_url'], // Pass image URL
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Text('Больше ивентов', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () => Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero)),
-                        child: Text('Смотреть больше', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF983296))),
+                        ],
                       ),
+                      const SizedBox(height: 20),
+
+                      // Volo-часы
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFB856B8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Твои Volo-часы:', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.white70)),
+                                Text(state.voloHours.toString(), style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.w600, color: Colors.white)),
+                              ],
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(context, '/volo_history'),
+                              child: Container(
+                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: Text('История', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF983296))),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // VOLO AI banner
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AiChatPage())),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFE5E5E5)),
+                            boxShadow: [BoxShadow(color: const Color(0xFF983296).withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 4))],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFC152B8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: const Color(0xFF983296).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))],
+                                ),
+                                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Спроси VOLO AI', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D26))),
+                                    Text('Умный подбор мероприятий', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w400, color: const Color(0xFF95969D))),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFD1D1D6), size: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      // Ad carousel
+                      SizedBox(
+                        height: 93,
+                        child: Stack(
+                          children: [
+                            PageView.builder(
+                              controller: _adController,
+                              onPageChanged: (i) => context.read<HomeBloc>().add(ChangeAdIndex(i)),
+                              itemCount: adImages.length,
+                              itemBuilder: (context, index) => Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 0),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.asset(adImages[index], fit: BoxFit.cover, width: double.infinity, height: 93,
+                                    errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: Center(child: Text('Ошибка', style: GoogleFonts.poppins(color: Colors.red))))),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 8, left: 0, right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(adImages.length, (i) => AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  width: 8, height: 8,
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: state.currentAdIndex == i ? const Color(0xFF983296) : Colors.grey[400]),
+                                )),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+                      Text('Интересные предложения', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        height: 200,
+                        child: state.events.isEmpty
+                            ? _buildEmptyOffersPlaceholder()
+                            : ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.only(top: 8, bottom: 8),
+                                itemCount: state.events.length > 5 ? 5 : state.events.length,
+                                itemBuilder: (context, index) {
+                                  final event = state.events[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 12),
+                                    child: GestureDetector(
+                                      onTap: () => _navigateToEventDetail(event),
+                                      child: _buildEventCard(
+                                        event['date_text'] ?? 'Скоро',
+                                        event['title'],
+                                        event['organizer'] ?? 'Организатор',
+                                        true,
+                                        event['image_url'],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Text('Больше ивентов', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero)),
+                            child: Text('Смотреть больше', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF983296))),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      if (state.events.isNotEmpty)
+                        ...state.events.map((event) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GestureDetector(
+                            onTap: () => _navigateToEventDetail(event),
+                            child: _buildEventListItem(event['title'], event['organizer'] ?? 'Организатор', event['date_text'] ?? 'Скоро', event['image_url']),
+                          ),
+                        ))
+                      else
+                        _buildNoEventsState(),
                     ],
                   ),
-                  const SizedBox(height: 12),
-
-                  // Обычные ивенты — ПОЛУЧАЕМ ИЗ БД
-                  if (_events.length > 5)
-                      ..._events.skip(5).map((event) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: GestureDetector(
-                          onTap: () => _navigateToEventDetail(event),
-                          child: _buildEventListItem(
-                            event['title'], 
-                            event['organizer'] ?? 'Организатор', 
-                            event['date_text'] ?? 'Скоро',
-                            event['image_url'] // Pass image URL
-                          ),
-                        ),
-                      ))
-                  else if (_events.isEmpty)
-                      _buildNoEventsState()
-                  else
-                      const SizedBox.shrink(),
-                ],
+                ),
               ),
-            ),
+              CustomBottomNavBar(currentIndex: state.selectedNavIndex, onTap: (i) => _onItemTapped(i, state)),
+            ],
           ),
-
-          CustomBottomNavBar(currentIndex: _selectedIndex, onTap: _onItemTapped),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
+  void _onItemTapped(int index, HomeState state) {
+    context.read<HomeBloc>().add(ChangeBottomNavIndex(index));
     switch (index) {
       case 0: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const NotificationsPage(), transitionDuration: Duration.zero)); break;
       case 1: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero)); break;
       case 2: break;
-      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const MyApplicationsPage(), transitionDuration: Duration.zero)); break;
+      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatsPage(), transitionDuration: Duration.zero)); break;
       case 4: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ProfilePage(), transitionDuration: Duration.zero)); break;
     }
   }
@@ -434,6 +440,8 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
               color: Colors.grey[300], 
               borderRadius: BorderRadius.circular(8), 

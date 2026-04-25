@@ -21,64 +21,34 @@ class CustomBottomNavBar extends StatelessWidget {
       unselectedItemColor: Colors.grey[400],
       onTap: onTap,
       items: [
+        // 0: Уведомления
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/images/notifi.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 0 ? const Color(0xFF983296) : Colors.grey[400]!,
-              BlendMode.srcIn,
-            ),
-          ),
+          icon: SvgPicture.asset('assets/images/notifi.svg', width: 20, height: 20,
+            colorFilter: ColorFilter.mode(currentIndex == 0 ? const Color(0xFF983296) : Colors.grey[400]!, BlendMode.srcIn)),
           label: '',
         ),
+        // 1: Поиск
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/images/ivents.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 1 ? const Color(0xFF983296) : Colors.grey[400]!,
-              BlendMode.srcIn,
-            ),
-          ),
+          icon: SvgPicture.asset('assets/images/ivents.svg', width: 20, height: 20,
+            colorFilter: ColorFilter.mode(currentIndex == 1 ? const Color(0xFF983296) : Colors.grey[400]!, BlendMode.srcIn)),
           label: '',
         ),
+        // 2: Главная
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/images/home.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 2 ? const Color(0xFF983296) : Colors.grey[400]!,
-              BlendMode.srcIn,
-            ),
-          ),
+          icon: SvgPicture.asset('assets/images/home.svg', width: 20, height: 20,
+            colorFilter: ColorFilter.mode(currentIndex == 2 ? const Color(0xFF983296) : Colors.grey[400]!, BlendMode.srcIn)),
           label: '',
         ),
+        // 3: Чаты (новая вкладка)
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/images/application.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 3 ? const Color(0xFF983296) : Colors.grey[400]!,
-              BlendMode.srcIn,
-            ),
-          ),
+          icon: Icon(Icons.chat_bubble_outline_rounded, size: 22,
+            color: currentIndex == 3 ? const Color(0xFF983296) : Colors.grey[400]),
           label: '',
         ),
+        // 4: Профиль
         BottomNavigationBarItem(
-          icon: SvgPicture.asset(
-            'assets/images/name.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(
-              currentIndex == 4 ? const Color(0xFF983296) : Colors.grey[400]!,
-              BlendMode.srcIn,
-            ),
-          ),
+          icon: SvgPicture.asset('assets/images/name.svg', width: 20, height: 20,
+            colorFilter: ColorFilter.mode(currentIndex == 4 ? const Color(0xFF983296) : Colors.grey[400]!, BlendMode.srcIn)),
           label: '',
         ),
       ],

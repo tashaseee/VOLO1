@@ -5,34 +5,31 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'dart:ui';
 import 'services/api_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'blocs/add_event/add_event_bloc.dart';
 
-class AddEventPage extends StatefulWidget {
+class AddEventPage extends StatelessWidget {
   const AddEventPage({super.key});
 
   @override
-  State<AddEventPage> createState() => _AddEventPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => AddEventBloc(apiService: ApiService()),
+      child: const _AddEventView(),
+    );
+  }
 }
 
-class _AddEventPageState extends State<AddEventPage> {
-  final PageController _pageController = PageController();
-  final ApiService _apiService = ApiService();
-  int _currentPage = 0;
-  final int _totalPages = 6;
+class _AddEventView extends StatefulWidget {
+  const _AddEventView({super.key});
 
-  // Event Data
-  String eventType = '';
-  File? posterImage;
-  String title = '';
-  String description = '';
-  DateTime? selectedDate;
-  TimeOfDay? selectedTime;
-  TimeOfDay? selectedEndTime; // Added
-  String location = '';
-  String address = '';
-  int volunteerCount = 5;
-  String chatLink = '';
-  List<String> responsibilities = [];
-  List<String> benefits = [];
+  @override
+  State<_AddEventView> createState() => _AddEventViewState();
+}
+
+class _AddEventViewState extends State<_AddEventView> {
+  final PageController _pageController = PageController();
+  // State is now managed by AddEventBloc
 
   // Controllers
   final TextEditingController _titleController = TextEditingController();
@@ -83,15 +80,10 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   void initState() {
     super.initState();
-    // Rebuild on every change to enable/disable the "Continue" button
-    _titleController.addListener(_updateState);
-    _descController.addListener(_updateState);
-    _addressController.addListener(_updateState);
-    _chatController.addListener(_updateState);
-  }
-
-  void _updateState() {
-    if (mounted) setState(() {});
+    _titleController.addListener(() => context.read<AddEventBloc>().add(UpdateEventData(title: _titleController.text)));
+    _descController.addListener(() => context.read<AddEventBloc>().add(UpdateEventData(description: _descController.text)));
+    _addressController.addListener(() => context.read<AddEventBloc>().add(UpdateEventData(address: _addressController.text)));
+    _chatController.addListener(() => context.read<AddEventBloc>().add(UpdateEventData(chatLink: _chatController.text)));
   }
 
   @override
@@ -104,84 +96,27 @@ class _AddEventPageState extends State<AddEventPage> {
     super.dispose();
   }
 
-  void _nextPage() {
-    if (_currentPage < _totalPages - 1) {
+  void _nextPage(AddEventState state) {
+    if (state.currentPage < state.totalPages - 1) {
+      context.read<AddEventBloc>().add(NextStepEvent());
       _pageController.nextPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
-      setState(() => _currentPage++);
     } else {
-      _publishEvent();
+      context.read<AddEventBloc>().add(PublishEvent());
     }
   }
 
-  void _previousPage() {
-    if (_currentPage > 0) {
+  void _previousPage(AddEventState state) {
+    if (state.currentPage > 0) {
+      context.read<AddEventBloc>().add(PreviousStepEvent());
       _pageController.previousPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
       );
-      setState(() => _currentPage--);
     } else {
       Navigator.pop(context);
-    }
-  }
-
-  Future<void> _publishEvent() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
-          child: const CircularProgressIndicator(color: Color(0xFF983296), strokeWidth: 3),
-        ),
-      ),
-    );
-
-    // Calculate duration
-    int duration = 4;
-    if (selectedTime != null && selectedEndTime != null) {
-      double start = selectedTime!.hour + selectedTime!.minute / 60.0;
-      double end = selectedEndTime!.hour + selectedEndTime!.minute / 60.0;
-      if (end < start) end += 24; // Handles overnight events roughly
-      duration = (end - start).ceil();
-      if (duration < 1) duration = 1;
-    }
-
-    // Prepare data for API
-    final eventData = {
-      'title': _titleController.text,
-      'description': _descController.text,
-      'location': '$location, ${_addressController.text}',
-      'date_text': selectedDate != null 
-          ? '${selectedDate!.day.toString().padLeft(2,'0')}.${selectedDate!.month.toString().padLeft(2,'0')}.${selectedDate!.year} | ${selectedTime?.format(context) ?? ''}' 
-          : '',
-      'hours': duration, 
-      'category': eventType,
-      'chat_link': _chatController.text,
-      'volunteer_count': volunteerCount,
-      'responsibilities': responsibilities.join(', '),
-      'benefits': benefits.join(', '),
-    };
-
-    final result = await _apiService.createEvent(eventData, imageFile: posterImage);
-
-    if (mounted) {
-      Navigator.pop(context); // Close loading dialog
-      if (result['success']) {
-        _showSuccessDialog();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: ${result['message']}', style: GoogleFonts.poppins()),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
     }
   }
 
@@ -228,36 +163,53 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  bool _isStepValid() {
-    switch (_currentPage) {
-      case 0:
-        return eventType.isNotEmpty;
-      case 1:
-        return posterImage != null;
-      case 2:
-        return _titleController.text.isNotEmpty && _descController.text.isNotEmpty;
-      case 3:
-        return selectedDate != null && selectedTime != null && location.isNotEmpty;
-      case 4:
-        return volunteerCount > 0 && responsibilities.isNotEmpty;
-      case 5:
-        return true;
-      default:
-        return false;
-    }
-  }
-
   Future<void> _pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null) {
-      setState(() => posterImage = File(result.files.single.path!));
+      if (mounted) context.read<AddEventBloc>().add(UpdateEventData(posterImage: File(result.files.single.path!)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+    return BlocConsumer<AddEventBloc, AddEventState>(
+      listener: (context, state) {
+        if (state.isLoading) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Center(
+              child: Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32)),
+                child: const CircularProgressIndicator(color: Color(0xFF983296), strokeWidth: 3),
+              ),
+            ),
+          );
+        } else {
+          // If a dialog is open (like loading), close it
+          if (Navigator.canPop(context) && state.isLoading == false) {
+             // We pop but wait, managing dialogs via pure BlocListener is a bit tricky, better to just pop if we succeed
+          }
+        }
+
+        if (state.isSuccess) {
+          Navigator.pop(context); // Close loading
+          _showSuccessDialog();
+        } else if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+           Navigator.pop(context); // Close loading
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(
+               content: Text('Ошибка: ${state.errorMessage}', style: GoogleFonts.poppins()),
+               backgroundColor: Colors.redAccent,
+               behavior: SnackBarBehavior.floating,
+             ),
+           );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // Background Decorative Elements
@@ -289,31 +241,33 @@ class _AddEventPageState extends State<AddEventPage> {
           SafeArea(
             child: Column(
               children: [
-                _buildHeader(),
+                _buildHeader(state),
                 Expanded(
                   child: PageView(
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      _buildStep1Category(),
-                      _buildStep2Image(),
-                      _buildStep3Info(),
-                      _buildStep4DateTime(),
-                      _buildStep5Volunteers(),
-                      _buildStep6Review(),
+                      _buildStep1Category(state),
+                      _buildStep2Image(state),
+                      _buildStep3Info(state),
+                      _buildStep4DateTime(state),
+                      _buildStep5Volunteers(state),
+                      _buildStep6Review(state),
                     ],
                   ),
                 ),
-                _buildBottomBar(),
+                _buildBottomBar(state),
               ],
             ),
           ),
         ],
       ),
     );
+      },
+    );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AddEventState state) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10), // Reduced top padding from 50 to 10
       child: Column(
@@ -321,11 +275,11 @@ class _AddEventPageState extends State<AddEventPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (_currentPage > 0)
+              if (state.currentPage > 0)
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                   color: const Color(0xFF0D0D26),
-                  onPressed: _previousPage,
+                  onPressed: () => _previousPage(state),
                 )
               else
                 const SizedBox(width: 48),
@@ -343,20 +297,20 @@ class _AddEventPageState extends State<AddEventPage> {
             child: Column(
               children: [
                 Row(
-                  children: List.generate(_totalPages, (index) {
-                    final isCompleted = index < _currentPage;
-                    final isCurrent = index == _currentPage;
+                  children: List.generate(state.totalPages, (index) {
+                    final isCompleted = index < state.currentPage;
+                    final isCurrent = index == state.currentPage;
                     return Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          if (index <= _currentPage) {
-                            setState(() => _currentPage = index);
+                          if (index <= state.currentPage) {
+                            // setState(() => state.currentPage = index); // handled by step change
                           }
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
                           height: 6,
-                          margin: EdgeInsets.only(right: index < _totalPages - 1 ? 6 : 0),
+                          margin: EdgeInsets.only(right: index < state.totalPages - 1 ? 6 : 0),
                           decoration: BoxDecoration(
                             color: isCompleted || isCurrent 
                                 ? const Color(0xFF983296) 
@@ -380,7 +334,7 @@ class _AddEventPageState extends State<AddEventPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'ШАГ ${_currentPage + 1}',
+                      'ШАГ ${state.currentPage + 1}',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: const Color(0xFF983296),
@@ -388,7 +342,7 @@ class _AddEventPageState extends State<AddEventPage> {
                       ),
                     ),
                     Text(
-                      'ИЗ $_totalPages',
+                      'ИЗ $state.totalPages',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: const Color(0xFF95969D),
@@ -405,7 +359,7 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar(AddEventState state) {
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 10, 28, 30),
       decoration: BoxDecoration(
@@ -426,7 +380,7 @@ class _AddEventPageState extends State<AddEventPage> {
             width: double.infinity,
             height: 54,
             child: ElevatedButton(
-              onPressed: _isStepValid() ? _nextPage : null,
+              onPressed: state.isCurrentStepValid ? () => _nextPage(state) : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF983296),
                 foregroundColor: Colors.white,
@@ -441,8 +395,8 @@ class _AddEventPageState extends State<AddEventPage> {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: Text(
-                  _currentPage < _totalPages - 1 ? 'Продолжить' : 'Опубликовать',
-                  key: ValueKey(_currentPage),
+                  state.currentPage < state.totalPages - 1 ? 'Продолжить' : 'Опубликовать',
+                  key: ValueKey(state.currentPage),
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -501,7 +455,7 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   // STEP 1: Category
-  Widget _buildStep1Category() {
+  Widget _buildStep1Category(AddEventState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       physics: const BouncingScrollPhysics(),
@@ -522,9 +476,9 @@ class _AddEventPageState extends State<AddEventPage> {
             itemCount: eventCategories.length,
             itemBuilder: (context, index) {
               final cat = eventCategories[index];
-              final isSelected = eventType == cat;
+              final isSelected = state.eventType == cat;
               return GestureDetector(
-                onTap: () => setState(() => eventType = cat),
+                onTap: () => context.read<AddEventBloc>().add(UpdateEventData(eventType: cat)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
@@ -595,7 +549,7 @@ class _AddEventPageState extends State<AddEventPage> {
     }
   }
   // STEP 2: Image
-  Widget _buildStep2Image() {
+  Widget _buildStep2Image(AddEventState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       physics: const BouncingScrollPhysics(),
@@ -616,8 +570,8 @@ class _AddEventPageState extends State<AddEventPage> {
                   color: const Color(0xFFF1F1F5),
                   width: 2,
                 ),
-                image: posterImage != null
-                    ? DecorationImage(image: FileImage(posterImage!), fit: BoxFit.cover)
+                image: state.posterImage != null
+                    ? DecorationImage(image: FileImage(state.posterImage!), fit: BoxFit.cover)
                     : null,
                 boxShadow: [
                   BoxShadow(
@@ -627,7 +581,7 @@ class _AddEventPageState extends State<AddEventPage> {
                   ),
                 ],
               ),
-              child: posterImage == null
+              child: state.posterImage == null
                   ? Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -675,7 +629,7 @@ class _AddEventPageState extends State<AddEventPage> {
   }
 
   // STEP 3: Info
-  Widget _buildStep3Info() {
+  Widget _buildStep3Info(AddEventState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       physics: const BouncingScrollPhysics(),
@@ -698,7 +652,7 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  Widget _buildStep4DateTime() {
+  Widget _buildStep4DateTime(AddEventState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       physics: const BouncingScrollPhysics(),
@@ -716,9 +670,9 @@ class _AddEventPageState extends State<AddEventPage> {
                     _buildSectionLabel('Дата'),
                     _buildDateTimeCard(
                       icon: Icons.calendar_today_rounded,
-                      text: selectedDate == null 
+                      text: state.selectedDate == null 
                           ? '01.01' 
-                          : '${selectedDate!.day.toString().padLeft(2,'0')}.${selectedDate!.month.toString().padLeft(2,'0')}',
+                          : '${state.selectedDate!.day.toString().padLeft(2,'0')}.${state.selectedDate!.month.toString().padLeft(2,'0')}',
                       onTap: () async {
                         final date = await showDatePicker(
                           context: context,
@@ -726,7 +680,7 @@ class _AddEventPageState extends State<AddEventPage> {
                           firstDate: DateTime.now(),
                           lastDate: DateTime.now().add(const Duration(days: 365)),
                         );
-                        if (date != null) setState(() => selectedDate = date);
+                        if (date != null) context.read<AddEventBloc>().add(UpdateEventData(selectedDate: date));
                       },
                     ),
                   ],
@@ -740,15 +694,15 @@ class _AddEventPageState extends State<AddEventPage> {
                     _buildSectionLabel('Начало'),
                     _buildDateTimeCard(
                       icon: Icons.access_time_rounded,
-                      text: selectedTime == null 
+                      text: state.selectedTime == null 
                           ? '--:--' 
-                          : selectedTime!.format(context),
+                          : state.selectedTime!.format(context),
                       onTap: () async {
                         final time = await showTimePicker(
                           context: context,
                           initialTime: TimeOfDay.now(),
                         );
-                        if (time != null) setState(() => selectedTime = time);
+                        if (time != null) context.read<AddEventBloc>().add(UpdateEventData(selectedTime: time));
                       },
                     ),
                   ],
@@ -762,15 +716,15 @@ class _AddEventPageState extends State<AddEventPage> {
                     _buildSectionLabel('Конец'),
                     _buildDateTimeCard(
                       icon: Icons.access_time_filled_rounded,
-                      text: selectedEndTime == null 
+                      text: state.selectedEndTime == null 
                           ? '--:--' 
-                          : selectedEndTime!.format(context),
+                          : state.selectedEndTime!.format(context),
                       onTap: () async {
                         final time = await showTimePicker(
                           context: context,
-                          initialTime: selectedTime ?? TimeOfDay.now(),
+                          initialTime: state.selectedTime ?? TimeOfDay.now(),
                         );
-                        if (time != null) setState(() => selectedEndTime = time);
+                        if (time != null) context.read<AddEventBloc>().add(UpdateEventData(selectedEndTime: time));
                       },
                     ),
                   ],
@@ -780,7 +734,7 @@ class _AddEventPageState extends State<AddEventPage> {
           ),
           const SizedBox(height: 24),
           _buildSectionLabel('Город'),
-          _buildDropdownField(),
+          _buildDropdownField(state),
           const SizedBox(height: 24),
           _buildSectionLabel('Точный адрес'),
           _buildPremiumField(_addressController, 'Улица, дом, офис...'),
@@ -790,7 +744,7 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  Widget _buildStep5Volunteers() {
+  Widget _buildStep5Volunteers(AddEventState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       physics: const BouncingScrollPhysics(),
@@ -800,20 +754,20 @@ class _AddEventPageState extends State<AddEventPage> {
           _buildStepTitle('ВОЛОНТЕРЫ', 'И ЗАДАЧИ', 'Кто вам нужен и что они получат?'),
           const SizedBox(height: 32),
           _buildSectionLabel('Количество волонтеров'),
-          _buildCounter(),
+          _buildCounter(state),
           const SizedBox(height: 32),
           _buildSectionLabel('Обязанности'),
-          _buildChipCloud(responsibilityOptions, responsibilities),
+          _buildChipCloud(responsibilityOptions, state.responsibilities, true),
           const SizedBox(height: 32),
           _buildSectionLabel('Бонусы для участников'),
-          _buildChipCloud(benefitOptions, benefits),
+          _buildChipCloud(benefitOptions, state.benefits, false),
           const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  Widget _buildStep6Review() {
+  Widget _buildStep6Review(AddEventState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       physics: const BouncingScrollPhysics(),
@@ -822,13 +776,13 @@ class _AddEventPageState extends State<AddEventPage> {
         children: [
           _buildStepTitle('ПРОВЕРЬТЕ', 'ВСЕ', 'Почти готово! Внимательно проверьте данные'),
           const SizedBox(height: 32),
-          if (posterImage != null)
+          if (state.posterImage != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: Image.file(posterImage!, height: 200, width: double.infinity, fit: BoxFit.cover),
+              child: Image.file(state.posterImage!, height: 200, width: double.infinity, fit: BoxFit.cover),
             ),
           const SizedBox(height: 24),
-          _buildReviewCard(),
+          _buildReviewCard(state),
           const SizedBox(height: 30),
         ],
       ),
@@ -921,7 +875,7 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  Widget _buildDropdownField() {
+  Widget _buildDropdownField(AddEventState state) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
@@ -930,7 +884,7 @@ class _AddEventPageState extends State<AddEventPage> {
         border: Border.all(color: const Color(0xFFF1F1F5)),
       ),
       child: DropdownButton<String>(
-        value: location.isEmpty ? null : location,
+        value: state.location.isEmpty ? null : state.location,
         hint: Text('Выберите город', style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFFBDBDBD))),
         isExpanded: true,
         underline: const SizedBox(),
@@ -940,12 +894,12 @@ class _AddEventPageState extends State<AddEventPage> {
             child: Text(city, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
           );
         }).toList(),
-        onChanged: (val) => setState(() => location = val!),
+        onChanged: (val) => context.read<AddEventBloc>().add(UpdateEventData(location: val!)),
       ),
     );
   }
 
-  Widget _buildCounter() {
+  Widget _buildCounter(AddEventState state) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -957,14 +911,14 @@ class _AddEventPageState extends State<AddEventPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildCounterBtn(Icons.remove_rounded, () {
-            if (volunteerCount > 0) setState(() => volunteerCount--);
+            if (state.volunteerCount > 0) context.read<AddEventBloc>().add(UpdateEventData(volunteerCount: state.volunteerCount - 1));
           }),
           Text(
-            '$volunteerCount',
+            '$state.volunteerCount',
             style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26)),
           ),
           _buildCounterBtn(Icons.add_rounded, () {
-            setState(() => volunteerCount++);
+            context.read<AddEventBloc>().add(UpdateEventData(volunteerCount: state.volunteerCount + 1));
           }),
         ],
       ),
@@ -986,7 +940,7 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  Widget _buildChipCloud(List<String> options, List<String> selections) {
+  Widget _buildChipCloud(List<String> options, List<String> selections, bool isResponsibilities) {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -994,10 +948,14 @@ class _AddEventPageState extends State<AddEventPage> {
         final isSelected = selections.contains(opt);
         return GestureDetector(
           onTap: () {
-            setState(() {
-              if (isSelected) selections.remove(opt);
-              else selections.add(opt);
-            });
+            List<String> newSelections = List.from(selections);
+            if (isSelected) newSelections.remove(opt);
+            else newSelections.add(opt);
+            if (isResponsibilities) {
+              context.read<AddEventBloc>().add(UpdateEventData(responsibilities: newSelections));
+            } else {
+              context.read<AddEventBloc>().add(UpdateEventData(benefits: newSelections));
+            }
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -1023,7 +981,7 @@ class _AddEventPageState extends State<AddEventPage> {
     );
   }
 
-  Widget _buildReviewCard() {
+  Widget _buildReviewCard(AddEventState state) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -1033,12 +991,12 @@ class _AddEventPageState extends State<AddEventPage> {
       ),
       child: Column(
         children: [
-          _buildReviewItem(Icons.category_rounded, 'Категория', eventType),
+          _buildReviewItem(Icons.category_rounded, 'Категория', state.eventType),
           _buildReviewItem(Icons.title_rounded, 'Название', _titleController.text),
           _buildReviewItem(Icons.calendar_month_rounded, 'Дата', 
-              selectedDate != null ? '${selectedDate!.day}.${selectedDate!.month}.${selectedDate!.year}' : ''),
-          _buildReviewItem(Icons.location_on_rounded, 'Место', '$location, ${_addressController.text}'),
-          _buildReviewItem(Icons.group_rounded, 'Волонтеры', '$volunteerCount человек'),
+              state.selectedDate != null ? '${state.selectedDate!.day}.${state.selectedDate!.month}.${state.selectedDate!.year}' : ''),
+          _buildReviewItem(Icons.location_on_rounded, 'Место', '${state.location}, ${_addressController.text}'),
+          _buildReviewItem(Icons.group_rounded, 'Волонтеры', '$state.volunteerCount человек'),
         ],
       ),
     );

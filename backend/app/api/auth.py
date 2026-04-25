@@ -129,6 +129,9 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     if not user.is_verified:
         raise HTTPException(status_code=400, detail="Email не подтвержден")
     
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ваш аккаунт заблокирован администратором")
+    
     # Мы разрешаем логин даже если не одобрено, чтобы приложение могло показать страницу ожидания
     # if user.role == "organizer" and not user.is_approved:
     #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Ваша организация ожидает одобрения администратором")
