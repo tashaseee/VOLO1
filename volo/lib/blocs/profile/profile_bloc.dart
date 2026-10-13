@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 
 abstract class ProfileEvent {}
@@ -94,6 +95,15 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<LoadProfile>((event, emit) async {
       emit(state.copyWith(isLoading: true));
 
+      // Load cached avatar immediately to prevent flashing
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedAvatar = prefs.getString('cached_avatar_url');
+        if (cachedAvatar != null && state.avatarUrl == null) {
+          emit(state.copyWith(avatarUrl: cachedAvatar));
+        }
+      } catch (_) {}
+
       final results = await Future.wait([
         apiService.getUserProfile(),
         apiService.getMyApplications(),
@@ -127,6 +137,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         socialScore = profile?['social_score'] ?? 0;
         sportScore = profile?['sport_score'] ?? 0;
         avatarUrl = profile?['avatar_url'];
+        
+        if (avatarUrl != null) {
+          SharedPreferences.getInstance().then((prefs) => prefs.setString('cached_avatar_url', avatarUrl!));
+        }
       } else {
         userName = 'Ошибка загрузки';
         userCity = '';

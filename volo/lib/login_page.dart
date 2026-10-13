@@ -1,12 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'onboarding_page.dart'; // Для навигации
 import 'sign_in_page.dart'; // Для навигации
+import 'services/api_service.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
+
+  void _showChangeUrlDialog(BuildContext context) {
+    final controller = TextEditingController(text: ApiService.baseUrl);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Настройки сервера'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Введите адрес API сервера:'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: dotenv.env['BASE_URL'] ?? 'http://127.0.0.1:8080',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'IP берется из файла .env',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              String newUrl = controller.text.trim();
+              if (newUrl.isNotEmpty) {
+                ApiService.baseUrl = newUrl;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Адрес сервера изменен на: $newUrl')),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +65,14 @@ class LoginPage extends StatelessWidget {
       backgroundColor: const Color(0xFF983296),
       body: Stack(
         children: [
+          Positioned(
+            top: 50,
+            right: 16,
+            child: IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white),
+              onPressed: () => _showChangeUrlDialog(context),
+            ),
+          ),
           Center(
             child: SvgPicture.asset(
               'assets/images/voloapp.svg',

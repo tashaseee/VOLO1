@@ -6,6 +6,7 @@ import UsersPage from './pages/UsersPage';
 import EventsPage from './pages/EventsPage';
 import StatsPage from './pages/StatsPage';
 import PendingOrgsPage from './pages/PendingOrgsPage';
+import SupportTicketsPage from './pages/SupportTicketsPage';
 
 function ProtectedLayout({ children, onLogout }) {
   return (
@@ -32,7 +33,7 @@ function App() {
   };
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/panel">
       <Routes>
         <Route path="/login" element={!token ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
 
@@ -57,6 +58,12 @@ function App() {
         <Route path="/events" element={token ? (
           <ProtectedLayout onLogout={handleLogout}>
             <EventsPage token={token} />
+          </ProtectedLayout>
+        ) : <Navigate to="/login" />} />
+
+        <Route path="/support" element={token ? (
+          <ProtectedLayout onLogout={handleLogout}>
+            <SupportTicketsPage token={token} />
           </ProtectedLayout>
         ) : <Navigate to="/login" />} />
       </Routes>

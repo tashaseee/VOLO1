@@ -118,7 +118,7 @@ class OrganizerEventsBloc extends Bloc<OrganizerEventsEvent, OrganizerEventsStat
           isSuccessAction: true, 
           successMessage: 'Статус ивента обновлен!'
         ));
-        add(LoadEvents()); // Reload events after changing status
+        if (!isClosed) add(LoadEvents()); // Reload events after changing status
       } else {
         emit(state.copyWith(
           isLoading: false,
@@ -134,9 +134,9 @@ class OrganizerEventsBloc extends Bloc<OrganizerEventsEvent, OrganizerEventsStat
       if (result['success']) {
         emit(state.copyWith(
           isSuccessAction: true, 
-          successMessage: 'Ивент успешно завершен! 🎉\\nЧасы начислены волонтерам.'
+          successMessage: 'Ивент успешно завершен! 🎉\nЧасы начислены волонтерам.'
         ));
-        add(LoadEvents());
+        if (!isClosed) add(LoadEvents());
       } else {
         emit(state.copyWith(
           isLoading: false,

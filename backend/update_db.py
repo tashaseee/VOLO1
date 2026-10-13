@@ -13,6 +13,7 @@ from sqlalchemy import text
 from app.models import user as user_models
 from app.models import event as event_models
 from app.models import notification as notification_models
+from app.models import support as support_models
 
 def update_database():
     print("🔄 Обновление базы данных...")
@@ -22,38 +23,50 @@ def update_database():
         user_models.Base.metadata.create_all(bind=engine)
         event_models.Base.metadata.create_all(bind=engine)
         notification_models.Base.metadata.create_all(bind=engine)
+        support_models.Base.metadata.create_all(bind=engine)
         
         print("✅ База данных успешно обновлена!")
         
         # Add new columns manually if they don't exist
-        with engine.begin() as conn:
-            # chat_link
-            try:
+        # chat_link
+        try:
+            with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE events ADD COLUMN chat_link VARCHAR"))
-                print("   + Добавлена колонка chat_link")
-            except Exception as e:
-                print(f"   - chat_link уже есть или ошибка: {e}")
-            
-            # volunteer_count
-            try:
+            print("   + Добавлена колонка chat_link")
+        except Exception as e:
+            print(f"   - chat_link уже есть или ошибка: {e}")
+        
+        # volunteer_count
+        try:
+            with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE events ADD COLUMN volunteer_count INTEGER DEFAULT 0"))
-                print("   + Добавлена колонка volunteer_count")
-            except Exception as e:
-                print(f"   - volunteer_count уже есть или ошибка: {e}")
-            
-            # responsibilities
-            try:
+            print("   + Добавлена колонка volunteer_count")
+        except Exception as e:
+            print(f"   - volunteer_count уже есть или ошибка: {e}")
+        
+        # responsibilities
+        try:
+            with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE events ADD COLUMN responsibilities TEXT"))
-                print("   + Добавлена колонка responsibilities")
-            except Exception as e:
-                print(f"   - responsibilities уже есть или ошибка: {e}")
-            
-            # benefits
-            try:
+            print("   + Добавлена колонка responsibilities")
+        except Exception as e:
+            print(f"   - responsibilities уже есть или ошибка: {e}")
+        
+        # benefits
+        try:
+            with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE events ADD COLUMN benefits TEXT"))
-                print("   + Добавлена колонка benefits")
-            except Exception as e:
-                print(f"   - benefits уже есть или ошибка: {e}")
+            print("   + Добавлена колонка benefits")
+        except Exception as e:
+            print(f"   - benefits уже есть или ошибка: {e}")
+        
+        # min_age
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE events ADD COLUMN min_age INTEGER DEFAULT 0"))
+            print("   + Добавлена колонка min_age")
+        except Exception as e:
+            print(f"   - min_age уже есть или ошибка: {e}")
             
         print("📋 Таблицы:")
         print("   - users")

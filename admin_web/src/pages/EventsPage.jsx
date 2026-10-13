@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchEvents, deleteEvent, fetchEventDetail, toggleEventActive } from '../api';
+import { fetchEvents, deleteEvent, fetchEventDetail, toggleEventActive, mediaUrl } from '../api';
 import {
     Calendar,
     MapPin,
@@ -79,13 +79,7 @@ export default function EventsPage({ token }) {
         e.organizer?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const API_URL = "http://10.202.8.194:8080";
-
-    const getImageUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        return `${API_URL}${url}`;
-    };
+    const getImageUrl = (url) => mediaUrl(url) || null;
 
     return (
         <div className="animate-slide-in">

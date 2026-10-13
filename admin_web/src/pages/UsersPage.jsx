@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchUsers, deleteUser, fetchUserDetail, toggleUserActive } from '../api';
+import { fetchUsers, deleteUser, fetchUserDetail, toggleUserActive, mediaUrl } from '../api';
 import {
     Users as UsersIcon,
     Search,
@@ -20,6 +20,20 @@ import {
     Award,
     Circle
 } from 'lucide-react';
+
+const highlightMatch = (text, search) => {
+    if (!search || !text) return text;
+    const parts = text.split(new RegExp(`(${search})`, 'gi'));
+    return (
+        <span>
+            {parts.map((part, i) => 
+                part.toLowerCase() === search.toLowerCase() 
+                    ? <mark key={i} style={{ backgroundColor: 'rgba(152, 50, 150, 0.2)', color: 'var(--primary-dark)', fontWeight: 'bold', padding: '0 2px', borderRadius: '4px' }}>{part}</mark>
+                    : part
+            )}
+        </span>
+    );
+};
 
 export default function UsersPage({ token }) {
     const [users, setUsers] = useState([]);
@@ -80,16 +94,11 @@ export default function UsersPage({ token }) {
 
     const filteredUsers = users.filter(u =>
         u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.bin?.includes(searchTerm)
     );
 
-    const API_URL = "http://10.202.8.194:8080"; // Needs to be consistent with api.js
-
-    const getAvatarUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        return `${API_URL}${url}`;
-    };
+    const getAvatarUrl = (url) => mediaUrl(url) || null;
 
     return (
         <div className="animate-slide-in">
@@ -170,8 +179,22 @@ export default function UsersPage({ token }) {
                                             )}
                                         </div>
                                         <div>
-                                            <p style={{ fontWeight: '600', fontSize: '0.9375rem' }}>{user.name}</p>
-                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.email}</p>
+                                            <p style={{ fontWeight: '600', fontSize: '0.9375rem' }}>{highlightMatch(user.name, searchTerm)}</p>
+                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{highlightMatch(user.email, searchTerm)}</p>
+                                            {user.role === 'organizer' && user.bin && (
+                                                <p style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    color: searchTerm && user.bin.includes(searchTerm) ? 'var(--primary-dark)' : 'var(--text-muted)',
+                                                    background: searchTerm && user.bin.includes(searchTerm) ? 'var(--primary-light)' : 'transparent',
+                                                    padding: searchTerm && user.bin.includes(searchTerm) ? '2px 6px' : '0',
+                                                    borderRadius: '4px',
+                                                    display: 'inline-block',
+                                                    fontFamily: 'monospace',
+                                                    marginTop: '2px'
+                                                }}>
+                                                    БИН: {highlightMatch(user.bin, searchTerm)}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </td>

@@ -30,7 +30,7 @@ class _MyApplicationsView extends StatelessWidget {
   const _MyApplicationsView();
 
   void _onItemTapped(BuildContext context, int index) {
-    if (index == 3) { Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatsPage(), transitionDuration: Duration.zero)); return; }
+    if (index == 3) { Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => ChatsPage(), transitionDuration: Duration.zero)); return; }
     switch (index) {
       case 0: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const NotificationsPage(), transitionDuration: Duration.zero)); break;
       case 1: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero)); break;
@@ -53,7 +53,7 @@ class _MyApplicationsView extends StatelessWidget {
                   width: 200, height: 200,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF983296).withOpacity(0.03),
+                    color: const Color(0xFF983296).withValues(alpha: 0.03),
                   ),
                 ),
               ),
@@ -103,7 +103,7 @@ class _MyApplicationsView extends StatelessWidget {
                 width: 44, height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
                 child: const Icon(Icons.tune_rounded, color: Color(0xFF0D0D26), size: 20),
               ),
@@ -141,7 +141,7 @@ class _MyApplicationsView extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFF983296) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isActive ? [BoxShadow(color: const Color(0xFF983296).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+          boxShadow: isActive ? [BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
           border: Border.all(color: isActive ? const Color(0xFF983296) : Colors.grey[200]!),
         ),
         child: Text(
@@ -192,13 +192,16 @@ class _MyApplicationsView extends StatelessWidget {
           responsibilities: const ['Участие в мероприятии'],
           benefits: ['${event['hours'] ?? 0} часов волонтерства'],
           eventId: event['id'],
+          imageUrl: event['image_url'],
+          minAge: event['min_age'] ?? 0,
+          chatId: event['chat_id'],
         ),
       )),
       child: Container(
         margin: const EdgeInsets.only(bottom: 24),
         decoration: BoxDecoration(
           color: Colors.white, borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         child: Column(
           children: [
@@ -209,7 +212,7 @@ class _MyApplicationsView extends StatelessWidget {
                   child: SizedBox(
                     height: 140, width: double.infinity,
                     child: imageUrl != null && imageUrl.isNotEmpty
-                      ? Image.network('http://127.0.0.1:8080$imageUrl', fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholder())
+                      ? Image.network('${ApiService.baseUrl}$imageUrl', fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildPlaceholder())
                       : _buildPlaceholder(),
                   ),
                 ),
@@ -222,9 +225,9 @@ class _MyApplicationsView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.2),
+                          color: statusColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: statusColor.withOpacity(0.3)),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                         ),
                         child: Text(statusText, style: GoogleFonts.poppins(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
                       ),
@@ -268,7 +271,7 @@ class _MyApplicationsView extends StatelessWidget {
                         icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
                         label: const Text('Перейти в чат'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF983296).withOpacity(0.1),
+                          backgroundColor: const Color(0xFF983296).withValues(alpha: 0.1),
                           foregroundColor: const Color(0xFF983296),
                           elevation: 0, padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -310,7 +313,7 @@ class _MyApplicationsView extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(color: const Color(0xFF983296).withOpacity(0.05), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: const Color(0xFF983296).withValues(alpha: 0.05), shape: BoxShape.circle),
             child: const Icon(Icons.event_note_outlined, size: 80, color: Color(0xFF983296)),
           ),
           const SizedBox(height: 24),

@@ -8,7 +8,6 @@ import 'blocs/register/register_event.dart';
 import 'blocs/register/register_state.dart';
 import 'services/api_service.dart';
 
-import 'user_info_onboarding_page.dart';
 import 'verification_code_page.dart';
 import 'sign_in_page.dart';
 
@@ -101,7 +100,7 @@ class _RegisterViewState extends State<RegisterView> {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: met ? const Color(0xFF983296).withOpacity(0.1) : Colors.grey[100],
+        color: met ? const Color(0xFF983296).withValues(alpha: 0.1) : Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: met ? const Color(0xFF983296) : Colors.transparent,
@@ -166,7 +165,7 @@ class _RegisterViewState extends State<RegisterView> {
                         'assets/images/left.svg',
                         width: 24,
                         height: 24,
-                        color: Colors.black,
+                        colorFilter: ColorFilter.mode(Colors.black, BlendMode.srcIn),
                       ),
                     ),
                   ),
@@ -262,7 +261,7 @@ class _RegisterViewState extends State<RegisterView> {
                               padding: const EdgeInsets.all(12.0),
                               child: SvgPicture.asset(
                                 'assets/images/name.svg', 
-                                width: 24, height: 24, color: Colors.grey
+                                width: 24, height: 24, colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn)
                               ),
                             ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -282,7 +281,7 @@ class _RegisterViewState extends State<RegisterView> {
                               padding: const EdgeInsets.all(12.0),
                               child: SvgPicture.asset(
                                 'assets/images/application.svg', 
-                                width: 24, height: 24, color: Colors.grey
+                                width: 24, height: 24, colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn)
                               ),
                             ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -306,7 +305,7 @@ class _RegisterViewState extends State<RegisterView> {
                               'assets/images/mail.svg',
                               width: 24,
                               height: 24,
-                              color: Colors.grey,
+                              colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                             ),
                           ),
                           border: OutlineInputBorder(
@@ -340,7 +339,7 @@ class _RegisterViewState extends State<RegisterView> {
                               'assets/images/password.svg',
                               width: 24,
                               height: 24,
-                              color: Colors.grey,
+                              colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                             ),
                           ),
                           suffixIcon: GestureDetector(
@@ -355,7 +354,7 @@ class _RegisterViewState extends State<RegisterView> {
                                     : 'assets/images/eye_off.svg',
                                 width: 24,
                                 height: 24,
-                                color: Colors.grey,
+                                colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                               ),
                             ),
                           ),
@@ -402,7 +401,7 @@ class _RegisterViewState extends State<RegisterView> {
                               'assets/images/password.svg',
                               width: 24,
                               height: 24,
-                              color: Colors.grey,
+                              colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                             ),
                           ),
                           suffixIcon: GestureDetector(
@@ -417,7 +416,7 @@ class _RegisterViewState extends State<RegisterView> {
                                     : 'assets/images/eye_off.svg',
                                 width: 24,
                                 height: 24,
-                                color: Colors.grey,
+                                colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                               ),
                             ),
                           ),

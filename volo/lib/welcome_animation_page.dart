@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'main_screen.dart';
 import 'home_page.dart';
 
 class WelcomeAnimationPage extends StatefulWidget {
@@ -24,8 +26,8 @@ class _WelcomeAnimationPageState extends State<WelcomeAnimationPage>
     _flashController.forward().then((_) {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const HomePage(),
-          transitionDuration: const Duration(milliseconds: 600),
+          pageBuilder: (_, __, ___) => const MainScreen(initialIndex: 2),
+          transitionDuration: const Duration(milliseconds: 500),
           transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
         ),
         (route) => false,

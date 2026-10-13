@@ -11,11 +11,8 @@ uvicorn app.main:app --reload
 ✅ Backend работает на http://127.0.0.1:8000
 
 ### 2. Запустите Frontend (30 сек)
-```bash
-cd volo
-flutter run
-```
-✅ Приложение запущено
+cd /Users/aminakazanbasova/Desktop/VOLO/backend
+sh run_dev.sh
 
 ### 3. Создайте тестовые аккаунты (2 мин)
 
@@ -126,6 +123,10 @@ SELECT * FROM events;
 SELECT * FROM applications;
 ```
 
+cd backend
+source venv/bin/activate
+python create_admin.py
+
 ## Документация
 
 📖 [README.md](./README.md) - Общее описание
@@ -173,3 +174,5 @@ MAIL_PASSWORD=lgul vwtr wkmj nsbe
 ---
 
 **Готово! Можно тестировать! 🎉**
+/venv/bin/python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+hhhh

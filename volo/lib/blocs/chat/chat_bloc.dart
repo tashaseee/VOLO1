@@ -55,7 +55,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   Future<void> _onLoad(LoadMessages event, Emitter<ChatRoomState> emit) async {
-    emit(state.copyWith(isLoading: true));
+    if (state.messages.isEmpty) emit(state.copyWith(isLoading: true));
     final result = await apiService.getChatMessages(event.chatId);
     if (result['success'] == true) {
       final data = result['data'] as List<dynamic>;

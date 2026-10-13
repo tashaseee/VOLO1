@@ -8,12 +8,14 @@ class SubmitOrgOnboarding extends OrgOnboardingEvent {
   final String website;
   final String address;
   final String phone;
+  final String? certificateTemplateUrl;
 
   SubmitOrgOnboarding({
     required this.description,
     required this.website,
     required this.address,
     required this.phone,
+    this.certificateTemplateUrl,
   });
 }
 
@@ -53,6 +55,8 @@ class OrgOnboardingBloc extends Bloc<OrgOnboardingEvent, OrgOnboardingState> {
         'website': event.website,
         'address': event.address,
         'phone': event.phone,
+        if (event.certificateTemplateUrl != null)
+          'certificate_template_url': event.certificateTemplateUrl,
       });
 
       if (result['success']) {

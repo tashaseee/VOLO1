@@ -1,27 +1,48 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Table
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Text,
+    Table,
+)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
 
 # Таблица участников чата (many-to-many)
 chat_participants = Table(
-    'chat_participants',
-    Base.metadata,
-    Column('chat_id', Integer, ForeignKey('chats.id', ondelete='CASCADE'), primary_key=True),
-    Column('user_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
-)
+    "chat_participants", Base.metadata, Column(
+        "chat_id", Integer, ForeignKey(
+            "chats.id", ondelete="CASCADE"), primary_key=True), Column(
+                "user_id", Integer, ForeignKey(
+                    "users.id", ondelete="CASCADE"), primary_key=True), )
+
 
 class Chat(Base):
     __tablename__ = "chats"
 
     id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=True)
-    name = Column(String, nullable=False)          # Название чата (= название ивента)
-    avatar_url = Column(String, nullable=True)     # Обложка ивента как аватар чата
+    event_id = Column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=True
+    )
+    name = Column(String, nullable=False)  # Название чата (= название ивента)
+    # Обложка ивента как аватар чата
+    avatar_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    participants = relationship("User", secondary=chat_participants, backref="chats")
-    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
+    participants = relationship(
+        "User",
+        secondary=chat_participants,
+        backref="chats")
+    messages = relationship(
+        "ChatMessage",
+        back_populates="chat",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
+    )
     event = relationship("Event", backref="chat", uselist=False)
 
 

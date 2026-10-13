@@ -6,35 +6,40 @@ import 'package:volo/home_page.dart';
 import 'package:volo/search_page.dart';
 import 'package:volo/my_applications_page.dart';
 import 'package:volo/profile_page.dart';
+import 'package:volo/chats_page.dart';
 import 'bottom_nav_bar.dart';
 import 'services/api_service.dart';
 import 'blocs/notifications/notifications_bloc.dart';
 import 'widgets/approval_notification_overlay.dart';
-import 'chat_room_page.dart';
 
 class NotificationsPage extends StatelessWidget {
-  final bool showNavBar;
-  const NotificationsPage({super.key, this.showNavBar = true});
+  final bool? showNavBar;
+  final bool showBackButton;
+  const NotificationsPage({super.key, this.showNavBar, this.showBackButton = false});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => NotificationsBloc(apiService: ApiService())..add(LoadNotifications()),
-      child: _NotificationsView(showNavBar: showNavBar),
+      child: _NotificationsView(
+        showNavBar: showNavBar ?? true,
+        showBackButton: showBackButton,
+      ),
     );
   }
 }
 
 class _NotificationsView extends StatelessWidget {
   final bool showNavBar;
-  const _NotificationsView({required this.showNavBar});
+  final bool showBackButton;
+  const _NotificationsView({required this.showNavBar, this.showBackButton = false});
 
   void _onItemTapped(BuildContext context, int index) {
     if (index == 0) return;
     switch (index) {
       case 1: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero)); break;
       case 2: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const HomePage(), transitionDuration: Duration.zero)); break;
-      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const MyApplicationsPage(), transitionDuration: Duration.zero)); break;
+      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => ChatsPage(), transitionDuration: Duration.zero)); break;
       case 4: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ProfilePage(), transitionDuration: Duration.zero)); break;
     }
   }
@@ -83,38 +88,56 @@ class _NotificationsView extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, NotificationsState state) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              SvgPicture.asset('assets/images/VOLO-2.svg', height: 20,
-                colorFilter: const ColorFilter.mode(Color(0xFF983296), BlendMode.srcIn)),
-              if (state.unreadCount > 0)
-                TextButton(
-                  onPressed: () => context.read<NotificationsBloc>().add(MarkAllRead()),
-                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6)),
-                  child: Text('Отметить все', style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF983296), fontWeight: FontWeight.w500)),
+          // Левая часть
+          if (showBackButton)
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5F5F8),
+                  shape: BoxShape.circle,
                 ),
-            ],
-          ),
-          const SizedBox(height: 16),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0D0D26), size: 16),
+              ),
+            )
+          else
+            const SizedBox(width: 32),
+
+          // Центр
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('Уведомления', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF0D0D26), letterSpacing: -0.5)),
+              Text(
+                'Уведомления',
+                style: GoogleFonts.poppins(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0D0D26),
+                ),
+              ),
               if (state.unreadCount > 0) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xFF983296), borderRadius: BorderRadius.circular(20)),
-                  child: Text('${state.unreadCount}', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xFF983296), borderRadius: BorderRadius.circular(10)),
+                  child: Text('${state.unreadCount}', style: GoogleFonts.poppins(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ],
             ],
           ),
+
+          // Правая часть
+          if (state.unreadCount > 0)
+            GestureDetector(
+              onTap: () => context.read<NotificationsBloc>().add(MarkAllRead()),
+              child: const Icon(Icons.checklist_rtl_rounded, color: Color(0xFF983296), size: 24),
+            )
+          else
+            const SizedBox(width: 32),
         ],
       ),
     );
@@ -136,64 +159,74 @@ class _NotificationsView extends StatelessWidget {
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
       ),
       onDismissed: (direction) => context.read<NotificationsBloc>().add(DeleteNotification(notification['id'])),
-      child: GestureDetector(
-        onTap: () {
-          if (!isRead) context.read<NotificationsBloc>().add(MarkAsRead(notification['id']));
-          // Если это уведомление о принятии — показываем красивый overlay с переходом в чат
-          if (type == 'approved' && notification['related_id'] != null) {
-            ApprovalNotificationOverlay.show(
-              context,
-              chatId: notification['related_id'] as int,
-              eventTitle: notification['title'] ?? 'Мероприятие',
-            );
-          } else {
-            Navigator.pushReplacement(context, PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const MyApplicationsPage(),
-              transitionDuration: Duration.zero,
-            ));
-          }
-        },
-        child: Container(
-          color: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38, height: 38,
-                decoration: BoxDecoration(color: typeColor.withOpacity(0.1), shape: BoxShape.circle),
-                child: Center(child: Icon(typeIcon, color: typeColor, size: 18)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notification['title'] ?? '',
-                            style: GoogleFonts.poppins(fontSize: 13, fontWeight: isRead ? FontWeight.w500 : FontWeight.w600, color: const Color(0xFF0D0D26), height: 1.2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(_formatDate(notification['created_at']), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w400, color: const Color(0xFF95969D))),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(notification['message'] ?? '', style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF7A7B82), height: 1.4, fontWeight: FontWeight.w400)),
-                  ],
-                ),
-              ),
-              if (!isRead)
+      child: Material(
+        color: isRead ? Colors.transparent : const Color(0xFF983296).withValues(alpha: 0.03),
+        child: InkWell(
+          highlightColor: Colors.black.withValues(alpha: 0.02),
+          splashColor: Colors.black.withValues(alpha: 0.05),
+          onTap: () {
+            if (!isRead) context.read<NotificationsBloc>().add(MarkAsRead(notification['id']));
+            if (type == 'approved' && notification['related_id'] != null) {
+              String eventTitle = 'Мероприятие';
+              final msg = notification['message'] as String? ?? '';
+              final regExp = RegExp(r'[«“"](.*?)[»”"]');
+              final match = regExp.firstMatch(msg);
+              if (match != null && match.groupCount >= 1) {
+                eventTitle = match.group(1) ?? 'Мероприятие';
+              }
+              ApprovalNotificationOverlay.show(
+                context,
+                chatId: notification['related_id'] as int,
+                eventTitle: eventTitle,
+              );
+            } else if (showNavBar) {
+              Navigator.pushReplacement(context, PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const MyApplicationsPage(),
+                transitionDuration: Duration.zero,
+              ));
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Container(
-                  margin: const EdgeInsets.only(left: 10, top: 2),
-                  width: 8, height: 8,
-                  decoration: const BoxDecoration(color: Color(0xFF983296), shape: BoxShape.circle),
+                  width: 48, height: 48,
+                  decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Center(child: Icon(typeIcon, color: typeColor, size: 24)),
                 ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notification['title'] ?? '',
+                              style: GoogleFonts.poppins(fontSize: 15, fontWeight: isRead ? FontWeight.w600 : FontWeight.w700, color: const Color(0xFF0D0D26), height: 1.2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(_formatDate(notification['created_at']), style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF95969D))),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(notification['message'] ?? '', style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF6B7280), height: 1.4, fontWeight: FontWeight.w400)),
+                    ],
+                  ),
+                ),
+                if (!isRead)
+                  Container(
+                    margin: const EdgeInsets.only(left: 12, top: 4),
+                    width: 10, height: 10,
+                    decoration: const BoxDecoration(color: Color(0xFF983296), shape: BoxShape.circle),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

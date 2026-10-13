@@ -145,7 +145,7 @@ class _VerificationCodeViewState extends State<VerificationCodeView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(6, (index) {
                     return SizedBox(
-                      width: 45,
+                      width: 40,
                       height: 55,
                       child: TextField(
                         controller: _controllers[index],

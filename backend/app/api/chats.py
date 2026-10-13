@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List, Optional
-from datetime import datetime
 
 from app.database import get_db
 from app.models.chat import Chat, ChatMessage
@@ -18,44 +16,55 @@ class SendMessageRequest(BaseModel):
 
 # ─── Мои чаты ────────────────────────────────────────────────────────────────
 
+
 @router.get("/")
-def get_my_chats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_my_chats(db: Session = Depends(get_db),
+                 current_user: User = Depends(get_current_user)):
     chats = [c for c in current_user.chats]
     result = []
     for chat in chats:
         last_msg = chat.messages[-1] if chat.messages else None
-        unread = sum(1 for m in chat.messages if not m.is_read and m.sender_id != current_user.id)
-        result.append({
-            "id": chat.id,
-            "name": chat.name,
-            "avatar_url": chat.avatar_url,
-            "event_id": chat.event_id,
-            "last_message": last_msg.text if last_msg else None,
-            "last_message_time": last_msg.created_at.isoformat() if last_msg else None,
-            "unread_count": unread,
-            "participants_count": len(chat.participants),
-        })
+        unread = sum(
+            1 for m in chat.messages if not m.is_read and m.sender_id != current_user.id)
+        is_organizer = chat.event and chat.event.organizer_id == current_user.id
+        is_archived = not chat.event.is_active if chat.event else False
+        result.append(
+            {
+                "id": chat.id,
+                "name": chat.name,
+                "avatar_url": chat.avatar_url,
+                "event_id": chat.event_id,
+                "last_message": last_msg.text if last_msg else None,
+                "last_message_time": (
+                    last_msg.created_at.isoformat() if last_msg else None
+                ),
+                "unread_count": unread,
+                "participants_count": len(chat.participants),
+                "is_organizer": is_organizer,
+                "is_archived": is_archived,
+            }
+        )
     result.sort(key=lambda x: x["last_message_time"] or "", reverse=True)
     return result
 
 
-# ─── Сообщения чата ───────────────────────────────────────────────────────────
+# ─── Сообщения чата ─────────────────────────────────────────────────────
+
 
 @router.get("/{chat_id}/messages")
 def get_chat_messages(
     chat_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     chat = db.query(Chat).filter(Chat.id == chat_id).first()
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
 
     if current_user not in chat.participants:
-        raise HTTPException(status_code=403, detail="Вы не являетесь участником этого чата")
+        raise HTTPException(
+            status_code=403, detail="Вы не являетесь участником этого чата"
+        )
 
     # Помечаем все входящие как прочитанные
     for msg in chat.messages:
@@ -67,14 +76,27 @@ def get_chat_messages(
         {
             "id": msg.id,
             "sender_id": msg.sender_id,
-            "sender_name": (msg.sender.profile.full_name if msg.sender and msg.sender.profile
-                           else (msg.sender.org_profile.full_name if msg.sender and msg.sender.org_profile
-                                 else "Пользователь")),
-            "sender_avatar": (msg.sender.profile.avatar_url if msg.sender and msg.sender.profile
-                              else (msg.sender.org_profile.avatar_url if msg.sender and msg.sender.org_profile
-                                    else None)),
+            "sender_name": (
+                msg.sender.profile.full_name
+                if msg.sender and msg.sender.profile
+                else (
+                    msg.sender.org_profile.full_name
+                    if msg.sender and msg.sender.org_profile
+                    else "Пользователь"
+                )
+            ),
+            "sender_avatar": (
+                msg.sender.profile.avatar_url
+                if msg.sender and msg.sender.profile
+                else (
+                    msg.sender.org_profile.avatar_url
+                    if msg.sender and msg.sender.org_profile
+                    else None
+                )
+            ),
             "text": msg.text,
             "is_mine": msg.sender_id == current_user.id,
+            "sender_role": msg.sender.role if msg.sender else "volunteer",
             "created_at": msg.created_at.isoformat(),
         }
         for msg in chat.messages
@@ -83,12 +105,13 @@ def get_chat_messages(
 
 # ─── Отправить сообщение ─────────────────────────────────────────────────────
 
+
 @router.post("/{chat_id}/messages")
 def send_message(
     chat_id: int,
     body: SendMessageRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     chat = db.query(Chat).filter(Chat.id == chat_id).first()
     if not chat:
@@ -98,9 +121,7 @@ def send_message(
         raise HTTPException(status_code=403, detail="Вы не участник чата")
 
     msg = ChatMessage(
-        chat_id=chat_id,
-        sender_id=current_user.id,
-        text=body.text.strip()
+        chat_id=chat_id, sender_id=current_user.id, text=body.text.strip()
     )
     db.add(msg)
     db.commit()
@@ -115,13 +136,14 @@ def send_message(
     }
 
 
-# ─── Участники чата ───────────────────────────────────────────────────────────
+# ─── Участники чата ─────────────────────────────────────────────────────
+
 
 @router.get("/{chat_id}/participants")
 def get_participants(
     chat_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     chat = db.query(Chat).filter(Chat.id == chat_id).first()
     if not chat:
@@ -132,8 +154,16 @@ def get_participants(
     return [
         {
             "id": p.id,
-            "name": (p.profile.full_name if p.profile else (p.org_profile.full_name if p.org_profile else "Пользователь")),
-            "avatar_url": (p.profile.avatar_url if p.profile else (p.org_profile.avatar_url if p.org_profile else None)),
+            "name": (
+                p.profile.full_name
+                if p.profile
+                else (p.org_profile.full_name if p.org_profile else "Пользователь")
+            ),
+            "avatar_url": (
+                p.profile.avatar_url
+                if p.profile
+                else (p.org_profile.avatar_url if p.org_profile else None)
+            ),
             "role": p.role,
         }
         for p in chat.participants

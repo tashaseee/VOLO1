@@ -58,7 +58,7 @@ class _AiChatViewState extends State<_AiChatView> {
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFC152B8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: const Color(0xFF983296).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+                  boxShadow: [BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
                 ),
                 child: const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
               ),
@@ -91,7 +91,7 @@ class _AiChatViewState extends State<_AiChatView> {
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start, crossAxisAlignment: CrossAxisAlignment.end, children: [
         if (!isUser) ...[
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+          Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]),
             child: const Center(child: Icon(Icons.auto_awesome, color: Color(0xFF983296), size: 18))),
           const SizedBox(width: 12),
         ],
@@ -102,8 +102,8 @@ class _AiChatViewState extends State<_AiChatView> {
               color: isUser ? null : Colors.white,
               gradient: isUser ? const LinearGradient(colors: [Color(0xFF983296), Color(0xFFB856B8)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
               boxShadow: isUser
-                  ? [BoxShadow(color: const Color(0xFF983296).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))]
-                  : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 14, offset: const Offset(0, 4))],
+                  ? [BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]
+                  : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 14, offset: const Offset(0, 4))],
               borderRadius: BorderRadius.only(topLeft: const Radius.circular(24), topRight: const Radius.circular(24), bottomLeft: Radius.circular(isUser ? 24 : 6), bottomRight: Radius.circular(isUser ? 6 : 24)),
             ),
             child: Text(message.text, style: GoogleFonts.poppins(color: isUser ? Colors.white : const Color(0xFF1E1E2D), fontSize: 14, fontWeight: FontWeight.w500, height: 1.5)),
@@ -125,11 +125,13 @@ class _AiChatViewState extends State<_AiChatView> {
         responsibilities: (event['responsibilities'] as String? ?? 'Участие в мероприятии').split('\n'),
         benefits: (event['benefits'] as String? ?? 'Volo-часы').split('\n'),
         eventId: event['id'], imageUrl: event['image_url'],
+        minAge: event['min_age'] ?? 0,
+        chatId: event['chat_id'],
       ))),
       child: Container(
         width: 200, margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
           border: Border.all(color: const Color(0xFFF0F0F0))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(height: 90, decoration: BoxDecoration(borderRadius: const BorderRadius.vertical(top: Radius.circular(16)), color: Colors.grey[200],
@@ -139,7 +141,7 @@ class _AiChatViewState extends State<_AiChatView> {
           Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(event['title'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0D0D26), height: 1.2)),
             const SizedBox(height: 6),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF983296).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF983296).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
               child: Text(event['date_text'] ?? '', style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF983296), fontWeight: FontWeight.w600))),
           ])),
         ]),
@@ -150,13 +152,13 @@ class _AiChatViewState extends State<_AiChatView> {
   Widget _buildTypingIndicator() => Padding(
     padding: const EdgeInsets.only(bottom: 20),
     child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+      Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]),
         child: const Center(child: Icon(Icons.auto_awesome, color: Color(0xFF983296), size: 18))),
       const SizedBox(width: 12),
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 14, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 14, offset: const Offset(0, 4))],
           borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24), bottomLeft: Radius.circular(6), bottomRight: Radius.circular(24))),
         child: Row(mainAxisSize: MainAxisSize.min, children: [_buildDot(0), const SizedBox(width: 6), _buildDot(1), const SizedBox(width: 6), _buildDot(2)]),
       ),
@@ -169,14 +171,14 @@ class _AiChatViewState extends State<_AiChatView> {
     curve: Interval(index * 0.2, 1.0, curve: Curves.easeInOut),
     builder: (context, double value, child) => Opacity(opacity: 0.3 + (value * 0.7),
       child: Transform.translate(offset: Offset(0, -4 * value),
-        child: Container(width: 8, height: 8, decoration: BoxDecoration(color: const Color(0xFF983296).withOpacity(0.5), shape: BoxShape.circle)))),
+        child: Container(width: 8, height: 8, decoration: BoxDecoration(color: const Color(0xFF983296).withValues(alpha: 0.5), shape: BoxShape.circle)))),
     onEnd: () {},
   );
 
   Widget _buildInputArea(BuildContext context) => Container(
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 24, offset: const Offset(0, -4))]),
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, -4))]),
     child: SafeArea(child: Row(children: [
       Expanded(child: Container(decoration: BoxDecoration(color: const Color(0xFFF5F6F8), borderRadius: BorderRadius.circular(28)),
         child: TextField(
@@ -201,7 +203,7 @@ class _AiChatViewState extends State<_AiChatView> {
         },
         child: Container(width: 52, height: 52,
           decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFC152B8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-            shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF983296).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]),
+            shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))]),
           child: const Center(child: Icon(Icons.send_rounded, color: Colors.white, size: 22))),
       ),
     ])),

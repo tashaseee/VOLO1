@@ -120,7 +120,7 @@ class OrganizerEventAppsBloc extends Bloc<OrganizerEventAppsEvent, OrganizerEven
             successMessage: 'Заявка отклонена ❌',
           ));
         }
-        add(LoadEventApps(event.eventId));
+        if (!isClosed) add(LoadEventApps(event.eventId));
       } else {
         emit(state.copyWith(
           errorMessage: "Ошибка: ${result['message']}"

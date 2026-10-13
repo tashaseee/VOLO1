@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:ui';
 
 class VolunteerProfileDetailsPage extends StatelessWidget {
   final Map<String, dynamic> volunteerData;
@@ -25,155 +23,143 @@ class VolunteerProfileDetailsPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: CustomScrollView(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0D0D26), size: 16),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Анкета волонтера',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0D0D26),
+          ),
+        ),
+        shape: const Border(
+          bottom: BorderSide(color: Color(0xFFF1F0F5), width: 1.5),
+        ),
+      ),
+      body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Header with Avatar
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            backgroundColor: const Color(0xFF983296),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Gradient or Image Background
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF983296), Color(0xFF662265)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.1,
-                      child: SvgPicture.asset(
-                        'assets/images/mask.svg',
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  // Avatar and Name
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 40),
-                      Hero(
-                        tag: 'avatar_${volunteerData['id']}',
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withOpacity(0.5), width: 4),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10)),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: avatarUrl.isNotEmpty
-                                ? Image.network(avatarUrl, fit: BoxFit.cover)
-                                : Container(
-                                    color: Colors.white.withOpacity(0.2),
-                                    child: Center(
-                                      child: Text(
-                                        name[0].toUpperCase(),
-                                        style: GoogleFonts.poppins(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        name,
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        volunteerData['email'] ?? '',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.7),
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar and Identity Card
+            Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Stat Cards
-                  Row(
-                    children: [
-                      _buildStatCard('Volo-часы', hours.toString(), Icons.timer_outlined),
-                      const SizedBox(width: 16),
-                      _buildStatCard('Заявка от', applicationDate, Icons.calendar_today_rounded),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Info Sections
-                  _buildInfoSection('О себе', bio, Icons.person_outline_rounded),
-                  const SizedBox(height: 24),
-                  _buildInfoSection('Навыки и интересы', skills, Icons.psychology_outlined),
-                  const SizedBox(height: 24),
-                  _buildInfoSection('Город', location, Icons.location_on_outlined),
-                  
-                  const SizedBox(height: 40),
-                  
-                  // Contact Button (Simulation)
                   Container(
-                    width: double.infinity,
-                    height: 60,
+                    width: 96,
+                    height: 96,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFB856B8)]),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(color: const Color(0xFF983296).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
-                      ],
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFF5F5F8),
+                      border: Border.all(color: const Color(0xFFF1F0F5), width: 2),
                     ),
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      child: Text(
-                        'НАПИСАТЬ СООБЩЕНИЕ',
-                        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1, color: Colors.white),
-                      ),
+                    child: ClipOval(
+                      child: avatarUrl.isNotEmpty
+                          ? Image.network(
+                              avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildPlaceholderAvatar(name),
+                            )
+                          : _buildPlaceholderAvatar(name),
                     ),
                   ),
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 16),
+                  Text(
+                    name,
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0D0D26),
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    volunteerData['email'] ?? '',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: const Color(0xFF95969D),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 28),
+
+            // Stat Cards
+            Row(
+              children: [
+                _buildStatCard('Volo-часы', hours.toString(), Icons.access_time_rounded),
+                const SizedBox(width: 12),
+                _buildStatCard('Заявка от', applicationDate, Icons.calendar_today_rounded),
+              ],
+            ),
+            const SizedBox(height: 28),
+
+            // Info Sections
+            _buildInfoSection('О себе', bio, Icons.person_outline_rounded),
+            const SizedBox(height: 20),
+            _buildInfoSection('Навыки и интересы', skills, Icons.psychology_outlined),
+            const SizedBox(height: 20),
+            _buildInfoSection('Город', location, Icons.location_on_outlined),
+
+            const SizedBox(height: 32),
+
+            // Action Button
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF983296),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'НАПИСАТЬ СООБЩЕНИЕ',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 60),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderAvatar(String name) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : 'B',
+        style: GoogleFonts.poppins(
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF983296),
+        ),
       ),
     );
   }
@@ -181,27 +167,36 @@ class VolunteerProfileDetailsPage extends StatelessWidget {
   Widget _buildStatCard(String label, String value, IconData icon) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF1F1F5)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: const Color(0xFF0D0D26).withValues(alpha: 0.015),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: const Color(0xFF983296)),
+            Icon(icon, size: 18, color: const Color(0xFF983296)),
             const SizedBox(height: 12),
             Text(
               value,
-              style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0D0D26)),
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
+            const SizedBox(height: 2),
             Text(
               label,
-              style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF95969D)),
+              style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF95969D)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -219,22 +214,22 @@ class VolunteerProfileDetailsPage extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               title,
-              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF0D0D26)),
+              style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0D0D26)),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFF1F1F5)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
           ),
           child: Text(
             content,
-            style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF6B6B7B), height: 1.6),
+            style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF5D5E67), height: 1.5, fontWeight: FontWeight.w500),
           ),
         ),
       ],

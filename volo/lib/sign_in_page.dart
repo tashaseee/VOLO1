@@ -9,8 +9,8 @@ import 'blocs/sign_in/sign_in_state.dart';
 import 'services/api_service.dart';
 
 import 'register_page.dart';
-import 'home_page.dart'; // Для обычных пользователей
-import 'organizer_home_page.dart'; // Для организаторов
+// Для обычных пользователей
+// Для организаторов
 import 'pending_approval_page.dart';
 import 'forgot_password_page.dart';
 
@@ -105,7 +105,7 @@ class _SignInViewState extends State<SignInView> {
                           'assets/images/left.svg',
                           width: 24,
                           height: 24,
-                          color: Colors.black,
+                          colorFilter: ColorFilter.mode(Colors.black, BlendMode.srcIn),
                         ),
                       ),
                     ),
@@ -148,7 +148,7 @@ class _SignInViewState extends State<SignInView> {
                               'assets/images/mail.svg',
                               width: 24,
                               height: 24,
-                              color: Colors.grey,
+                              colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                             ),
                           ),
                           border: OutlineInputBorder(
@@ -177,7 +177,7 @@ class _SignInViewState extends State<SignInView> {
                               'assets/images/password.svg',
                               width: 24,
                               height: 24,
-                              color: Colors.grey,
+                              colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                             ),
                           ),
                           suffixIcon: IconButton(
@@ -185,7 +185,7 @@ class _SignInViewState extends State<SignInView> {
                               state.showPassword ? 'assets/images/eye_off.svg' : 'assets/images/eye.svg',
                               width: 24,
                               height: 24,
-                              color: Colors.grey,
+                              colorFilter: ColorFilter.mode(Colors.grey, BlendMode.srcIn),
                             ),
                             onPressed: () => context.read<SignInBloc>().add(TogglePasswordVisibility()),
                           ),

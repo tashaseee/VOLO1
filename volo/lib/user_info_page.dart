@@ -150,7 +150,7 @@ class _UserInfoViewState extends State<_UserInfoView> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border: Border.all(color: _voloPurple.withOpacity(0.1), width: 1),
+                          border: Border.all(color: _voloPurple.withValues(alpha: 0.1), width: 1),
                           image: data['avatar_url'] != null
                               ? DecorationImage(
                                   image: NetworkImage(data['avatar_url'].startsWith('http') ? data['avatar_url'] : '${ApiService.baseUrl}${data['avatar_url']}'),
@@ -299,7 +299,7 @@ class _UserInfoViewState extends State<_UserInfoView> {
       border: Border.all(color: Colors.grey[100]!),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.02),
+          color: Colors.black.withValues(alpha: 0.02),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -332,7 +332,7 @@ class _UserInfoViewState extends State<_UserInfoView> {
             iconPath,
             width: 20,
             height: 20,
-            colorFilter: ColorFilter.mode(_voloPurple.withOpacity(0.5), BlendMode.srcIn),
+            colorFilter: ColorFilter.mode(_voloPurple.withValues(alpha: 0.5), BlendMode.srcIn),
           ),
           const SizedBox(width: 20),
           Expanded(

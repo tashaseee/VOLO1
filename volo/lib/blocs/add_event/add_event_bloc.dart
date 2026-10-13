@@ -14,6 +14,7 @@ class UpdateEventData extends AddEventEvent {
   final String? eventType;
   final File? posterImage;
   final String? title;
+  final String? certificateTitle;
   final String? description;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
@@ -24,11 +25,13 @@ class UpdateEventData extends AddEventEvent {
   final String? chatLink;
   final List<String>? responsibilities;
   final List<String>? benefits;
+  final int? minAge;
 
   UpdateEventData({
     this.eventType,
     this.posterImage,
     this.title,
+    this.certificateTitle,
     this.description,
     this.selectedDate,
     this.selectedTime,
@@ -39,6 +42,7 @@ class UpdateEventData extends AddEventEvent {
     this.chatLink,
     this.responsibilities,
     this.benefits,
+    this.minAge,
   });
 }
 
@@ -51,6 +55,7 @@ class AddEventState {
   final String eventType;
   final File? posterImage;
   final String title;
+  final String certificateTitle;
   final String description;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
@@ -61,10 +66,13 @@ class AddEventState {
   final String chatLink;
   final List<String> responsibilities;
   final List<String> benefits;
+  final int minAge;
   
   final bool isLoading;
   final bool isSuccess;
   final String? errorMessage;
+  final int? createdEventId;
+  final int? createdChatId;
 
   AddEventState({
     this.currentPage = 0,
@@ -72,6 +80,7 @@ class AddEventState {
     this.eventType = '',
     this.posterImage,
     this.title = '',
+    this.certificateTitle = '',
     this.description = '',
     this.selectedDate,
     this.selectedTime,
@@ -82,16 +91,19 @@ class AddEventState {
     this.chatLink = '',
     this.responsibilities = const [],
     this.benefits = const [],
+    this.minAge = 0,
     this.isLoading = false,
     this.isSuccess = false,
     this.errorMessage,
+    this.createdEventId,
+    this.createdChatId,
   });
 
   bool get isCurrentStepValid {
     switch (currentPage) {
       case 0: return eventType.isNotEmpty;
       case 1: return posterImage != null;
-      case 2: return title.isNotEmpty && description.isNotEmpty;
+      case 2: return title.isNotEmpty && certificateTitle.isNotEmpty && description.isNotEmpty;
       case 3: return selectedDate != null && selectedTime != null && location.isNotEmpty;
       case 4: return volunteerCount > 0 && responsibilities.isNotEmpty;
       case 5: return true;
@@ -104,6 +116,7 @@ class AddEventState {
     String? eventType,
     File? posterImage,
     String? title,
+    String? certificateTitle,
     String? description,
     DateTime? selectedDate,
     TimeOfDay? selectedTime,
@@ -114,9 +127,12 @@ class AddEventState {
     String? chatLink,
     List<String>? responsibilities,
     List<String>? benefits,
+    int? minAge,
     bool? isLoading,
     bool? isSuccess,
     String? errorMessage,
+    int? createdEventId,
+    int? createdChatId,
   }) {
     return AddEventState(
       currentPage: currentPage ?? this.currentPage,
@@ -124,6 +140,7 @@ class AddEventState {
       eventType: eventType ?? this.eventType,
       posterImage: posterImage ?? this.posterImage,
       title: title ?? this.title,
+      certificateTitle: certificateTitle ?? this.certificateTitle,
       description: description ?? this.description,
       selectedDate: selectedDate ?? this.selectedDate,
       selectedTime: selectedTime ?? this.selectedTime,
@@ -134,9 +151,12 @@ class AddEventState {
       chatLink: chatLink ?? this.chatLink,
       responsibilities: responsibilities ?? this.responsibilities,
       benefits: benefits ?? this.benefits,
+      minAge: minAge ?? this.minAge,
       isLoading: isLoading ?? this.isLoading,
       isSuccess: isSuccess ?? this.isSuccess,
       errorMessage: errorMessage,
+      createdEventId: createdEventId ?? this.createdEventId,
+      createdChatId: createdChatId ?? this.createdChatId,
     );
   }
 }
@@ -163,6 +183,7 @@ class AddEventBloc extends Bloc<AddEventEvent, AddEventState> {
         eventType: event.eventType,
         posterImage: event.posterImage,
         title: event.title,
+        certificateTitle: event.certificateTitle,
         description: event.description,
         selectedDate: event.selectedDate,
         selectedTime: event.selectedTime,
@@ -173,6 +194,7 @@ class AddEventBloc extends Bloc<AddEventEvent, AddEventState> {
         chatLink: event.chatLink,
         responsibilities: event.responsibilities,
         benefits: event.benefits,
+        minAge: event.minAge,
       ));
     });
 
@@ -191,6 +213,7 @@ class AddEventBloc extends Bloc<AddEventEvent, AddEventState> {
 
         final eventData = {
           'title': state.title,
+          'certificate_title': state.certificateTitle.isNotEmpty ? state.certificateTitle : state.title,
           'description': state.description,
           'location': '${state.location}, ${state.address}',
           'date_text': state.selectedDate != null 
@@ -198,16 +221,23 @@ class AddEventBloc extends Bloc<AddEventEvent, AddEventState> {
               : '',
           'hours': duration, 
           'category': state.eventType,
-          'chat_link': state.chatLink,
+          'chat_link': '',
           'volunteer_count': state.volunteerCount,
           'responsibilities': state.responsibilities.join(', '),
           'benefits': state.benefits.join(', '),
+          'min_age': state.minAge,
         };
 
         final result = await apiService.createEvent(eventData, imageFile: state.posterImage);
 
-        if (result['success'] == true || result['success'] == 'true') {
-          emit(state.copyWith(isLoading: false, isSuccess: true));
+        if (result['success'] == true) {
+          final data = result['data'];
+          emit(state.copyWith(
+            isLoading: false, 
+            isSuccess: true,
+            createdEventId: data['id'],
+            createdChatId: data['chat_id'],
+          ));
         } else {
           emit(state.copyWith(isLoading: false, errorMessage: result['message']?.toString() ?? 'Неизвестная ошибка'));
         }

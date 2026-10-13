@@ -7,7 +7,8 @@ import {
     UserCheck,
     LogOut,
     Building2,
-    ShieldCheck
+    ShieldCheck,
+    LifeBuoy
 } from 'lucide-react';
 
 export default function Sidebar({ onLogout }) {
@@ -16,16 +17,17 @@ export default function Sidebar({ onLogout }) {
         { to: '/pending', icon: UserCheck, label: 'Заявки организаций' },
         { to: '/users', icon: Users, label: 'Пользователи' },
         { to: '/events', icon: Calendar, label: 'Мероприятия' },
+        { to: '/support', icon: LifeBuoy, label: 'Техподдержка' },
     ];
 
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <div className="logo-container">
-                    <ShieldCheck size={28} className="logo-icon" />
+                <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <img src="/panel/logo.svg" alt="VOLO Logo" style={{ height: '24px', objectFit: 'contain' }} />
                     <div className="logo-text">
-                        <span className="logo-title">VOLO</span>
-                        <span className="logo-subtitle">Admin Panel</span>
+                        <span className="logo-title" style={{ fontSize: '1.3rem', fontWeight: '800', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>VOLO</span>
+                        <span className="logo-subtitle" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '600', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Панель управления</span>
                     </div>
                 </div>
             </div>

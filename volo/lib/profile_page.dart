@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:volo/home_page.dart';
 import 'package:volo/search_page.dart';
-import 'package:volo/my_applications_page.dart';
 import 'package:volo/notifications_page.dart';
 import 'package:volo/user_info_page.dart';
 import 'package:volo/event_detail_page.dart';
@@ -16,21 +14,25 @@ import 'services/api_service.dart';
 import 'login_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'blocs/profile/profile_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'profile_settings_pages.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final bool? showNavBar;
+  const ProfilePage({super.key, this.showNavBar});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => ProfileBloc(apiService: ApiService())..add(LoadProfile()),
-      child: const _ProfilePageView(),
+      child: _ProfilePageView(showNavBar: showNavBar ?? true),
     );
   }
 }
 
 class _ProfilePageView extends StatefulWidget {
-  const _ProfilePageView();
+  final bool showNavBar;
+  const _ProfilePageView({required this.showNavBar});
 
   @override
   State<_ProfilePageView> createState() => _ProfilePageViewState();
@@ -91,33 +93,22 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                     children: [
                       Stack(
                         children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
+                          ClipOval(
+                            child: Container(
+                              width: 80,
+                              height: 80,
                               color: Colors.grey[300],
-                              image: state.avatarUrl != null
-                                  ? DecorationImage(
-                                      image: NetworkImage(
-                                        state.avatarUrl!.startsWith('http')
-                                            ? state.avatarUrl!
-                                            : '${ApiService.baseUrl}${state.avatarUrl!}',
-                                      ),
+                              child: state.avatarUrl != null && state.avatarUrl!.isNotEmpty
+                                  ? FadeInImage.assetNetwork(
+                                      placeholder: 'assets/images/us.png',
+                                      image: ApiService.mediaUrl(state.avatarUrl),
                                       fit: BoxFit.cover,
+                                      imageErrorBuilder: (context, error, stackTrace) {
+                                        return Image.asset('assets/images/us.png', fit: BoxFit.cover);
+                                      },
                                     )
-                                  : null,
+                                  : Image.asset('assets/images/us.png', fit: BoxFit.cover),
                             ),
-                            child: state.avatarUrl == null
-                                ? ClipOval(
-                                    child: Image.asset(
-                                      'assets/images/us.png',
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : null,
                           ),
                           Positioned(
                             bottom: 0,
@@ -131,7 +122,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
+                                      color: Colors.black.withValues(alpha: 0.1),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -179,18 +170,24 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                     ],
                   ),
                   const SizedBox(height: 24),
-
                   // Volo-часы
                   Container(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF983296), Color(0xFFB856B8)],
+                        colors: [Color(0xFF983296), Color(0xFF7B1FA2)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF983296).withValues(alpha: 0.25),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -201,34 +198,45 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                               Text(
                                 'Твои Volo-часы:',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white.withValues(alpha: 0.85),
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               Text(
                                 state.voloHours.toString(),
                                 style: GoogleFonts.poppins(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Text(
-                            'История',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF983296),
+                        GestureDetector(
+                          onTap: () => Navigator.pushNamed(context, '/volo_history'),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: Text(
+                              'История',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF983296),
+                              ),
                             ),
                           ),
                         ),
@@ -236,7 +244,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
+ 
                   // Личная информация
                   GestureDetector(
                     onTap: () {
@@ -250,25 +258,29 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF983296).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF983296).withOpacity(0.3),
-                        ),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.015),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF983296).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: const Color(0xFF983296).withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
                             ),
-                            child: SvgPicture.asset(
-                              'assets/images/pen.svg',
-                              width: 22,
-                              height: 22,
-                              colorFilter: const ColorFilter.mode(Color(0xFF983296), BlendMode.srcIn),
+                            child: const Icon(
+                              Icons.badge_outlined,
+                              color: Color(0xFF983296),
+                              size: 22,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -281,19 +293,21 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                                   style: GoogleFonts.poppins(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.black,
+                                    color: const Color(0xFF0D0D26),
                                   ),
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Управление профилем',
+                                  'Управление вашими данными',
                                   style: GoogleFonts.poppins(
                                     fontSize: 12,
-                                    color: Colors.grey[600],
+                                    color: const Color(0xFF95969D),
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                         ],
                       ),
                     ),
@@ -319,9 +333,9 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: _buildStatItem(state.eventsDone.toString(), 'Волонтёр')),
-                        Expanded(child: _buildStatItem(state.ecoScore.toString(), 'Эко')),
-                        Expanded(child: _buildStatItem(state.sportScore.toString(), 'Спорт')),
+                        Expanded(child: _buildStatItem(state.eventsDone.toString(), 'Волонтер', Icons.volunteer_activism_rounded, const Color(0xFF983296))),
+                        Expanded(child: _buildStatItem(state.ecoScore.toString(), 'Эко-баллы', Icons.eco_rounded, const Color(0xFF4CAF50))),
+                        Expanded(child: _buildStatItem(state.sportScore.toString(), 'Спорт-баллы', Icons.sports_soccer_rounded, const Color(0xFFFF9800))),
                       ],
                     ),
                   ),
@@ -362,6 +376,8 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                                     benefits: (event['benefits'] as String? ?? '').split('\n'),
                                     eventId: event['id'],
                                     imageUrl: event['image_url'],
+                                    minAge: event['min_age'] ?? 0,
+                                    chatId: event['chat_id'],
                                   ),
                                 ),
                               );
@@ -410,6 +426,8 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                                     benefits: (event['benefits'] as String? ?? '').split('\n'),
                                     eventId: event['id'],
                                     imageUrl: event['image_url'],
+                                    minAge: event['min_age'] ?? 0,
+                                    chatId: event['chat_id'],
                                   ),
                                 ),
                               );
@@ -487,25 +505,19 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                   ),
 
                   _buildSettingItem(
-                    title: 'Язык',
-                    subtitle: 'Русский',
-                    onTap: () {
-                      _showLanguageDialog();
-                    },
+                    title: 'Настройки уведомлений',
+                    subtitle: 'Все уведомления включены',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsPage())),
                   ),
                   _buildSettingItem(
                     title: 'Помощь и поддержка',
                     subtitle: 'FAQ и контакты',
-                    onTap: () {
-                      _showSupportDialog();
-                    },
+                    onTap: () => Navigator.pushNamed(context, '/help_support'),
                   ),
                   _buildSettingItem(
                     title: 'О приложении',
                     subtitle: 'Версия 1.0.0',
-                    onTap: () {
-                      _showAboutDialog();
-                    },
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutVoloPage())),
                   ),
                   const SizedBox(height: 8),
                   _buildSettingItem(
@@ -523,33 +535,44 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
           ),
         ],
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
+      bottomNavigationBar: widget.showNavBar
+          ? CustomBottomNavBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+            )
+          : null,
     );
       },
     );
   }
 
-  Widget _buildStatItem(String number, String label) {
+  Widget _buildStatItem(String number, String label, IconData icon, Color color) {
     return Column(
       children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 8),
         Text(
           number,
           style: GoogleFonts.poppins(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF983296),
+            color: const Color(0xFF0D0D26),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 2),
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w500,
-            color: Colors.grey[600],
+            color: Colors.grey[500],
           ),
         ),
       ],
@@ -616,92 +639,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
     );
   }
 
-  void _showLanguageDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Выбор языка',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildLanguageOption('Русский', true),
-            _buildLanguageOption('Қазақша', false),
-            _buildLanguageOption('English', false),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Закрыть',
-              style: GoogleFonts.poppins(color: const Color(0xFF983296)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildLanguageOption(String language, bool isSelected) {
-    return ListTile(
-      title: Text(
-        language,
-        style: GoogleFonts.poppins(
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-        ),
-      ),
-      trailing: isSelected
-          ? const Icon(Icons.check, color: Color(0xFF983296))
-          : null,
-      onTap: () {
-        Navigator.pop(context);
-      },
-    );
-  }
-
-  void _showSupportDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Помощь и поддержка',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Email: support@volo.kz',
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Телефон: +7 (777) 123-45-67',
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Telegram: @volo_support',
-              style: GoogleFonts.poppins(fontSize: 14),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Закрыть',
-              style: GoogleFonts.poppins(color: const Color(0xFF983296)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showAboutDialog() {
     showDialog(
@@ -748,62 +686,180 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
   }
 
   Widget _buildCertificateCard(dynamic cert) {
+    final imageUrl = ApiService.mediaUrl(cert['certificate_url']?.toString());
+    final hasImage = imageUrl.isNotEmpty;
+    final issueDate = cert['issue_date']?.toString() ?? '';
+    final dateLabel = issueDate.length >= 10 ? issueDate.substring(0, 10) : issueDate;
+
     return GestureDetector(
-      onTap: () => _handleCertificate(
-          cert['event_name'], 
-          'VOLO', 
-          cert['issue_date'].substring(0, 10)
-      ),
+      onTap: () => _openCertificateFromApi(cert),
       child: Container(
-        width: 160,
-        height: 130,
-        padding: const EdgeInsets.all(12),
+        width: hasImage ? 140 : 160,
+        height: hasImage ? 180 : 130,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFF1F1F5)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF983296).withOpacity(0.05),
+              color: const Color(0xFF983296).withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, 4),
             )
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF983296).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF983296), size: 24),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  cert['event_name'],
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF0D0D26),
+        clipBehavior: Clip.antiAlias,
+        child: hasImage
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_outlined, color: Color(0xFF983296)),
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      cert['event_name'] ?? '',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0D0D26),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              )
+            : Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF983296).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF983296), size: 24),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cert['event_name'] ?? '',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0D0D26),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          dateLabel,
+                          style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF95969D)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Text(
-                  cert['issue_date'].substring(0, 10),
+              ),
+      ),
+    );
+  }
+
+  void _openCertificateFromApi(dynamic cert) {
+    final imageUrl = ApiService.mediaUrl(cert['certificate_url']?.toString());
+    if (imageUrl.isEmpty) {
+      _showCertificateDialog(
+        cert['event_name'] ?? 'Мероприятие',
+        cert['organizer_name'] ?? 'VOLO',
+        cert['issue_date']?.toString().substring(0, 10) ?? '',
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Text(
+                'Ваш сертификат',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(imageUrl, fit: BoxFit.contain),
+              ),
+            ),
+            if (cert['hours'] != null && cert['hours'] > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '+${cert['hours']} ч. волонтёрства',
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: const Color(0xFF95969D),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF983296),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TextButton.icon(
+                  onPressed: () async {
+                    final pdfUrl = imageUrl.replaceAll('.jpg', '.pdf');
+                    final uri = Uri.parse(pdfUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Не удалось открыть ссылку на PDF')),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF983296), size: 18),
+                  label: Text(
+                    'Скачать PDF',
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF983296),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Закрыть',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -862,7 +918,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
         Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const HomePage(), transitionDuration: Duration.zero));
         break;
       case 3:
-        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatsPage(), transitionDuration: Duration.zero));
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => ChatsPage(), transitionDuration: Duration.zero));
         break;
       case 4:
         break;
@@ -989,9 +1045,9 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF983296).withOpacity(0.1),
+                color: const Color(0xFF983296).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF983296).withOpacity(0.3)),
+                border: Border.all(color: const Color(0xFF983296).withValues(alpha: 0.3)),
               ),
               child: Text(
                 'Сертификат',
@@ -1037,7 +1093,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                 end: Alignment.bottomRight,
                 colors: [
                   Colors.white,
-                  const Color(0xFF983296).withOpacity(0.05),
+                  const Color(0xFF983296).withValues(alpha: 0.05),
                 ],
               ),
             ),
@@ -1074,7 +1130,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF983296).withOpacity(0.08),
+                    color: const Color(0xFF983296).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -1160,7 +1216,7 @@ class _ProfilePageViewState extends State<_ProfilePageView> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF983296).withOpacity(0.08),
+                    color: const Color(0xFF983296).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -1370,7 +1426,7 @@ Container(
   decoration: BoxDecoration(
     borderRadius: BorderRadius.circular(16),
     border: Border.all(
-      color: const Color(0xFF983296).withOpacity(0.3),
+      color: const Color(0xFF983296).withValues(alpha: 0.3),
       width: 2,
     ),
   ),
@@ -1389,7 +1445,7 @@ Container(
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF983296).withOpacity(0.08),
+                    color: const Color(0xFF983296).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(

@@ -2,9 +2,29 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8080';
+  static String _baseUrl = 'http://127.0.0.1:8080';
+
+  static String get baseUrl => _baseUrl;
+
+  static set baseUrl(String value) {
+    _baseUrl = value;
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('api_base_url', value);
+    });
+  }
+
+  static Future<void> initBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUrl = prefs.getString('api_base_url');
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      _baseUrl = savedUrl;
+    } else {
+      _baseUrl = dotenv.env['BASE_URL'] ?? 'http://127.0.0.1:8080';
+    }
+  }
 
   // Регистрация
   Future<Map<String, dynamic>> register(String email, String password, {String role = 'volunteer', String? orgName, String? bin}) async {
@@ -51,7 +71,7 @@ class ApiService {
         await prefs.setBool('is_approved', result['data']['is_approved']);
       }
       return result;
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('❌ LOGIN ERROR: $e');
         print('💡 СОВЕТ: Проверьте, что VPN ВЫКЛЮЧЕН на Mac и на iPhone. Mac IP: 10.202.8.194');
       return {'success': false, 'message': 'Ошибка сети: $e'};
@@ -219,6 +239,35 @@ class ApiService {
           'new_password': newPassword
         }),
       );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  static String mediaUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    return '$baseUrl$path';
+  }
+
+  // Шаблон сертификата организации (без текста, с печатями)
+  Future<Map<String, dynamic>> uploadCertificateTemplate(String filePath) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/users/upload-certificate-template'),
+      );
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
     } catch (e) {
       return {'success': false, 'message': 'Ошибка сети: $e'};
@@ -561,6 +610,110 @@ class ApiService {
       final response = await http.get(
         Uri.parse('$baseUrl/api/chats/$chatId/participants'),
         headers: {'Authorization': 'Bearer $token'},
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // Отправить запрос в техподдержку
+  Future<Map<String, dynamic>> submitSupportRequest(String message) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.post(
+        Uri.parse('$baseUrl/support/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+        body: {
+          'message': message,
+        },
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // Получить мои запросы в техподдержку
+  Future<Map<String, dynamic>> getMySupportRequests() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.get(
+        Uri.parse('$baseUrl/support/my'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // Получить все запросы в техподдержку (для админа)
+  Future<Map<String, dynamic>> getAllSupportRequests() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.get(
+        Uri.parse('$baseUrl/support/all'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // Ответить на запрос в техподдержку (для админа)
+  Future<Map<String, dynamic>> replyToSupportRequest(int requestId, String replyText) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.post(
+        Uri.parse('$baseUrl/support/$requestId/reply'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+        body: {
+          'reply': replyText,
+        },
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // Оставить отзыв о мероприятии
+  Future<Map<String, dynamic>> submitReview(int eventId, int rating, String text) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final response = await http.post(
+        Uri.parse('$baseUrl/events/$eventId/reviews'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'rating': rating,
+          'text': text,
+        }),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Ошибка сети: $e'};
+    }
+  }
+
+  // Получить отзывы мероприятия
+  Future<Map<String, dynamic>> getEventReviews(int eventId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/events/$eventId/reviews'),
       );
       return _handleResponse(response);
     } catch (e) {

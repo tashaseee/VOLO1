@@ -68,16 +68,16 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
 
   Future<void> _onMarkAsRead(MarkAsRead event, Emitter<NotificationsState> emit) async {
     await apiService.markNotificationAsRead(event.id);
-    add(LoadNotifications());
+    if (!isClosed) add(LoadNotifications());
   }
 
   Future<void> _onMarkAll(MarkAllRead event, Emitter<NotificationsState> emit) async {
     await apiService.markAllNotificationsAsRead();
-    add(LoadNotifications());
+    if (!isClosed) add(LoadNotifications());
   }
 
   Future<void> _onDelete(DeleteNotification event, Emitter<NotificationsState> emit) async {
     await apiService.deleteNotification(event.id);
-    add(LoadNotifications());
+    if (!isClosed) add(LoadNotifications());
   }
 }

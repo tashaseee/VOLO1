@@ -2,60 +2,70 @@ from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List
 from datetime import date, datetime
 
+
 class UserBase(BaseModel):
     email: EmailStr
+
 
 class UserCreate(UserBase):
     password: str
 
-    @field_validator('password')
+    @field_validator("password")
     @classmethod
     def password_complexity(cls, v):
         if len(v) < 8:
-            raise ValueError('Пароль должен быть не менее 8 символов')
+            raise ValueError("Пароль должен быть не менее 8 символов")
         if not any(char.isdigit() for char in v):
-            raise ValueError('Пароль должен содержать хотя бы одну цифру')
+            raise ValueError("Пароль должен содержать хотя бы одну цифру")
         if not any(char.isupper() for char in v):
-            raise ValueError('Пароль должен содержать хотя бы одну заглавную букву')
+            raise ValueError(
+                "Пароль должен содержать хотя бы одну заглавную букву")
         return v
-    role: str = "volunteer" # volunteer or organizer
+
+    role: str = "volunteer"  # volunteer or organizer
     org_name: Optional[str] = None
     bin: Optional[str] = None
 
-    @field_validator('bin')
+    @field_validator("bin")
     @classmethod
     def validate_bin(cls, v, values):
         if v and len(v) != 12:
-            raise ValueError('БИН должен состоять из 12 цифр')
+            raise ValueError("БИН должен состоять из 12 цифр")
         if v and not v.isdigit():
-            raise ValueError('БИН должен состоять только из цифр')
+            raise ValueError("БИН должен состоять только из цифр")
         return v
+
 
 class UserVerify(BaseModel):
     email: EmailStr
     code: str
 
+
 class UserLogin(UserBase):
     password: str
 
+
 class UserForgot(BaseModel):
     email: EmailStr
+
 
 class UserReset(BaseModel):
     email: EmailStr
     code: str
     new_password: str
 
-    @field_validator('new_password')
+    @field_validator("new_password")
     @classmethod
     def password_complexity(cls, v):
         if len(v) < 8:
-            raise ValueError('Пароль должен быть не менее 8 символов')
+            raise ValueError("Пароль должен быть не менее 8 символов")
         if not any(char.isdigit() for char in v):
-            raise ValueError('Пароль должен содержать хотя бы одну цифру')
+            raise ValueError("Пароль должен содержать хотя бы одну цифру")
         if not any(char.isupper() for char in v):
-            raise ValueError('Пароль должен содержать хотя бы одну заглавную букву')
+            raise ValueError(
+                "Пароль должен содержать хотя бы одну заглавную букву")
         return v
+
 
 class ProfileBase(BaseModel):
     full_name: Optional[str] = None
@@ -66,19 +76,25 @@ class ProfileBase(BaseModel):
     experience: Optional[str] = None
     motivation: Optional[str] = None
 
+
 class ProfileUpdate(ProfileBase):
     interests: Optional[List[str]] = None
     skills: Optional[List[str]] = None
 
+
 class InterestOut(BaseModel):
     name: str
+
     class Config:
         from_attributes = True
 
+
 class SkillOut(BaseModel):
     name: str
+
     class Config:
         from_attributes = True
+
 
 class ProfileOut(ProfileBase):
     id: int
@@ -94,6 +110,7 @@ class ProfileOut(ProfileBase):
     class Config:
         from_attributes = True
 
+
 class OrganizationProfileBase(BaseModel):
     full_name: Optional[str] = None
     bin: Optional[str] = None
@@ -101,15 +118,21 @@ class OrganizationProfileBase(BaseModel):
     website: Optional[str] = None
     address: Optional[str] = None
     phone: Optional[str] = None
+
+
 class OrganizationProfileUpdate(OrganizationProfileBase):
-    pass
+    certificate_template_url: Optional[str] = None
+
 
 class OrganizationProfileOut(OrganizationProfileBase):
     id: int
     avatar_url: Optional[str] = None
+    certificate_template_url: Optional[str] = None
     updated_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
+
 
 class UserOut(UserBase):
     id: int
@@ -125,12 +148,14 @@ class UserOut(UserBase):
     class Config:
         from_attributes = True
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
     role: str
     is_approved: bool
     is_verified: bool
+
 
 class TokenData(BaseModel):
     email: Optional[str] = None

@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:volo/profile_page.dart';
-import 'package:volo/filter_page.dart';
 import 'package:volo/event_detail_page.dart';
-import 'package:volo/my_applications_page.dart';
 import 'package:volo/search_page.dart';
 import 'package:volo/notifications_page.dart';
 import 'package:volo/ai_chat_page.dart';
@@ -16,19 +14,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'blocs/home/home_bloc.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  final bool? showNavBar;
+  const HomePage({super.key, this.showNavBar});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => HomeBloc(apiService: ApiService())..add(LoadHomeData()),
-      child: const HomeView(),
+      child: HomeView(showNavBar: showNavBar ?? true),
     );
   }
 }
 
 class HomeView extends StatefulWidget {
-  const HomeView({super.key});
+  final bool showNavBar;
+  const HomeView({super.key, required this.showNavBar});
 
   @override
   State<HomeView> createState() => _HomeViewState();
@@ -182,7 +182,7 @@ class _HomeViewState extends State<HomeView> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: const Color(0xFFE5E5E5)),
-                            boxShadow: [BoxShadow(color: const Color(0xFF983296).withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 4))],
+                            boxShadow: [BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.08), blurRadius: 15, offset: const Offset(0, 4))],
                           ),
                           child: Row(
                             children: [
@@ -191,7 +191,7 @@ class _HomeViewState extends State<HomeView> {
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(colors: [Color(0xFF983296), Color(0xFFC152B8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                                   shape: BoxShape.circle,
-                                  boxShadow: [BoxShadow(color: const Color(0xFF983296).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))],
+                                  boxShadow: [BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
                                 ),
                                 child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
                               ),
@@ -304,7 +304,8 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
-              CustomBottomNavBar(currentIndex: state.selectedNavIndex, onTap: (i) => _onItemTapped(i, state)),
+              if (widget.showNavBar)
+                CustomBottomNavBar(currentIndex: state.selectedNavIndex, onTap: (i) => _onItemTapped(i, state)),
             ],
           ),
         );
@@ -318,7 +319,7 @@ class _HomeViewState extends State<HomeView> {
       case 0: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const NotificationsPage(), transitionDuration: Duration.zero)); break;
       case 1: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero)); break;
       case 2: break;
-      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatsPage(), transitionDuration: Duration.zero)); break;
+      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => ChatsPage(), transitionDuration: Duration.zero)); break;
       case 4: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ProfilePage(), transitionDuration: Duration.zero)); break;
     }
   }
@@ -339,7 +340,7 @@ class _HomeViewState extends State<HomeView> {
               width: 30,
               height: 30,
               decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF662265)),
-              child: Center(child: SvgPicture.asset('assets/images/Shape.svg', width: 16, height: 16, color: Colors.white)),
+              child: Center(child: SvgPicture.asset('assets/images/Shape.svg', width: 16, height: 16, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn))),
             ),
           ),
           Padding(
@@ -350,17 +351,17 @@ class _HomeViewState extends State<HomeView> {
                 // ДАТА
                 Center(
                   child: Container(
-                    width: 76,
-                    height: 12,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    width: 107,
+                    height: 22,
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: Center(
                       child: Text(
                         _formatDate(date),
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(fontSize: 6, fontWeight: FontWeight.w500, color: const Color(0xFF983296)),
+                        style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
                       ),
                     ),
                   ),
@@ -390,9 +391,9 @@ class _HomeViewState extends State<HomeView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
-                          const SizedBox(height: 1),
-                          Text(org, style: GoogleFonts.poppins(fontSize: 8, fontWeight: FontWeight.w500, color: Colors.white70)),
+                          Text(title, style: GoogleFonts.poppins(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600, color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 2),
+                          Text(org, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
@@ -425,7 +426,7 @@ class _HomeViewState extends State<HomeView> {
     return Container(
       width: 107,
       height: 22,
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Text(text, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w400, color: Colors.white), textAlign: TextAlign.center),
     );

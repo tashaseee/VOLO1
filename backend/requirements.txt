@@ -8,3 +8,5 @@ python-multipart
 python-jose[cryptography]
 email-validator
 fastapi-mail
+Pillow>=10.0.0
+openai>=1.0.0

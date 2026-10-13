@@ -77,9 +77,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
       if (profileResult['success'] == true) {
         final data = profileResult['data'];
-        name = data['full_name'] ?? data['email'] ?? '';
-        avatar = data['avatar_url'];
-        hours = data['total_hours'] ?? 0;
+        final role = data['role'] as String?;
+        if (role == 'organizer') {
+          final orgProfile = data['org_profile'];
+          name = orgProfile?['full_name'] ?? data['email'] ?? '';
+          avatar = orgProfile?['avatar_url'];
+          hours = 0;
+        } else {
+          final profile = data['profile'];
+          name = profile?['full_name'] ?? data['email'] ?? '';
+          avatar = profile?['avatar_url'];
+          hours = (profile?['volo_hours'] ?? 0) as int;
+        }
       }
 
       List<dynamic> events = [];

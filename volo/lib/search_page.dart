@@ -3,7 +3,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:volo/home_page.dart';
-import 'package:volo/my_applications_page.dart';
 import 'package:volo/profile_page.dart';
 import 'package:volo/notifications_page.dart';
 import 'package:volo/event_detail_page.dart';
@@ -14,19 +13,21 @@ import 'services/api_service.dart';
 import 'blocs/search/search_bloc.dart';
 
 class SearchPage extends StatelessWidget {
-  const SearchPage({super.key});
+  final bool? showNavBar;
+  const SearchPage({super.key, this.showNavBar});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => SearchBloc(apiService: ApiService())..add(LoadSearchEvents()),
-      child: const _SearchView(),
+      child: _SearchView(showNavBar: showNavBar ?? true),
     );
   }
 }
 
 class _SearchView extends StatefulWidget {
-  const _SearchView();
+  final bool showNavBar;
+  const _SearchView({required this.showNavBar});
 
   @override
   State<_SearchView> createState() => _SearchViewState();
@@ -47,7 +48,7 @@ class _SearchViewState extends State<_SearchView> {
       case 0: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const NotificationsPage(), transitionDuration: Duration.zero)); break;
       case 1: break;
       case 2: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const HomePage(), transitionDuration: Duration.zero)); break;
-      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatsPage(), transitionDuration: Duration.zero)); break;
+      case 3: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => ChatsPage(), transitionDuration: Duration.zero)); break;
       case 4: Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ProfilePage(), transitionDuration: Duration.zero)); break;
     }
   }
@@ -83,16 +84,15 @@ class _SearchViewState extends State<_SearchView> {
                         children: [
                           Expanded(
                             child: Container(
+                              height: 50,
                               decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[200]!),
+                                color: const Color(0xFFF5F5F8),
+                                borderRadius: BorderRadius.circular(16),
                               ),
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Row(
                                 children: [
-                                  SvgPicture.asset('assets/images/search.svg', width: 18, height: 18,
-                                    colorFilter: ColorFilter.mode(Colors.grey[500]!, BlendMode.srcIn)),
+                                  const Icon(Icons.search_rounded, color: Color(0xFFA0A0AB), size: 22),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: TextField(
@@ -100,10 +100,14 @@ class _SearchViewState extends State<_SearchView> {
                                       onChanged: (v) => context.read<SearchBloc>().add(SearchQueryChanged(v)),
                                       decoration: InputDecoration(
                                         hintText: 'Поиск событий...',
-                                        hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
+                                        hintStyle: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFFA0A0AB), fontWeight: FontWeight.w400),
                                         border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
                                       ),
-                                      style: GoogleFonts.poppins(fontSize: 14),
+                                      style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF0D0D26), fontWeight: FontWeight.w500),
                                     ),
                                   ),
                                 ],
@@ -146,6 +150,7 @@ class _SearchViewState extends State<_SearchView> {
                               child: GestureDetector(
                                 onTap: () => context.read<SearchBloc>().add(SearchCategoryChanged(category)),
                                 child: Container(
+                                  alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: isSelected ? const Color(0xFF983296) : Colors.grey[50],
                                     borderRadius: BorderRadius.circular(20),
@@ -153,7 +158,7 @@ class _SearchViewState extends State<_SearchView> {
                                       color: isSelected ? const Color(0xFF983296) : Colors.grey[300]!,
                                     ),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
                                   child: Text(
                                     category,
                                     style: GoogleFonts.poppins(
@@ -198,6 +203,9 @@ class _SearchViewState extends State<_SearchView> {
                                           responsibilities: (event['responsibilities'] as String? ?? '').split(', '),
                                           benefits: (event['benefits'] as String? ?? '').split(', '),
                                           eventId: event['id'],
+                                          imageUrl: event['image_url'],
+                                          minAge: event['min_age'] ?? 0,
+                                          chatId: event['chat_id'],
                                         ),
                                       ));
                                     },
@@ -212,7 +220,12 @@ class _SearchViewState extends State<_SearchView> {
               ),
             ],
           ),
-          bottomNavigationBar: CustomBottomNavBar(currentIndex: 1, onTap: _onItemTapped),
+          bottomNavigationBar: widget.showNavBar
+              ? CustomBottomNavBar(
+                  currentIndex: 1,
+                  onTap: _onItemTapped,
+                )
+              : null,
         );
       },
     );

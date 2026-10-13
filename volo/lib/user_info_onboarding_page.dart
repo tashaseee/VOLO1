@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'welcome_animation_page.dart';
 import 'sign_in_page.dart';
 
@@ -161,19 +161,71 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Выход', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        content: Text('Вы уверены, что хотите выйти?', style: GoogleFonts.poppins()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Отмена', style: GoogleFonts.poppins(color: Colors.grey)),
+      barrierColor: Colors.black.withValues(alpha: 0.2), // Более легкое затемнение
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // Меньший радиус
+        elevation: 10,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Выйти из аккаунта?',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Ваш прогресс будет сброшен',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey[500],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(
+                      'Отмена',
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF983296), // Фирменный цвет вместо красного
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(
+                      'Выйти',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Выйти', style: GoogleFonts.poppins(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
 
@@ -223,71 +275,53 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
       final isLoading = state.isSubmitting;
       return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: _currentPage > 0
-            ? IconButton(
-                icon: SvgPicture.asset(
-                  'assets/images/left.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter:
-                      const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-                  placeholderBuilder: (_) =>
-                      const Icon(Icons.arrow_back, color: Colors.black),
-                ),
-                onPressed: _previousPage,
-              )
-            : IconButton(
-                icon: const Icon(Icons.logout_rounded, color: Colors.black),
-                onPressed: _logout,
-              ),
-        title: Text(
-          'Расскажите о себе',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Прогресс-бар
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-            child: Column(
-              children: [
-                Row(
-                  children: List.generate(6, (index) {
-                    return Expanded(
-                      child: Container(
-                        height: 4,
-                        margin: EdgeInsets.only(right: index < 5 ? 8 : 0),
-                        decoration: BoxDecoration(
-                          color: index <= _currentPage
-                              ? const Color(0xFF983296)
-                              : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(2),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Современная верхняя панель (Кнопка назад + Прогресс-бар)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 28, 8),
+              child: Row(
+                children: [
+                  _currentPage > 0
+                      ? IconButton(
+                          icon: SvgPicture.asset(
+                            'assets/images/left.svg',
+                            width: 24,
+                            height: 24,
+                            colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                            placeholderBuilder: (_) => const Icon(Icons.arrow_back, color: Colors.black),
+                          ),
+                          onPressed: _previousPage,
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.logout_rounded, color: Colors.black),
+                          onPressed: _logout,
                         ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Шаг ${_currentPage + 1} из 6',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Row(
+                      children: List.generate(6, (index) {
+                        return Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: 6,
+                            margin: EdgeInsets.only(right: index < 5 ? 6 : 0),
+                            decoration: BoxDecoration(
+                              color: index <= _currentPage
+                                  ? const Color(0xFF983296)
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
           // Контент
           Expanded(
             child: PageView(
@@ -341,6 +375,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
           ),
         ],
       ),
+      ),
     );
       },
     );
@@ -364,7 +399,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
               height: 18,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           RichText(
             text: TextSpan(
               children: [
@@ -390,16 +425,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
             ),
           ),
           const SizedBox(height: 12),
-          // Аватар убран по просьбе пользователя
-          // Основная информация
-          Text(
-            'Основная информация',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF888888),
-            ),
-          ),
+
           const SizedBox(height: 16),
           // Имя
           Text(
@@ -505,11 +531,18 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
               }
             },
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
+                border: Border.all(color: Colors.grey[300]!),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -517,19 +550,24 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                     'assets/images/calendar.svg',
                     width: 20,
                     height: 20,
-                    colorFilter:
-                        ColorFilter.mode(Colors.grey[600]!, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                        birthDate != null ? const Color(0xFF983296) : Colors.grey[500]!, 
+                        BlendMode.srcIn),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    birthDate != null
-                        ? '${birthDate!.day}.${birthDate!.month}.${birthDate!.year}'
-                        : 'Выберите дату',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: birthDate != null ? Colors.black : Colors.grey[400],
+                  Expanded(
+                    child: Text(
+                      birthDate != null
+                          ? '${birthDate!.day.toString().padLeft(2, '0')}.${birthDate!.month.toString().padLeft(2, '0')}.${birthDate!.year}'
+                          : 'Выберите дату рождения',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: birthDate != null ? FontWeight.w500 : FontWeight.w400,
+                        color: birthDate != null ? Colors.black87 : Colors.grey[500],
+                      ),
                     ),
                   ),
+                  Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[400], size: 20),
                 ],
               ),
             ),
@@ -569,45 +607,32 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF983296).withOpacity(0.1) : Colors.grey[50],
+          color: isSelected ? const Color(0xFF983296).withValues(alpha: 0.1) : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? const Color(0xFF983296) : Colors.grey[200]!,
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Stack(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Center(
-              child: Text(
-                genderText == 'Мужской' ? 'Мужчина' : 'Женщина',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? const Color(0xFF983296) : Colors.grey[600],
-                ),
+            if (genderText == 'Мужской') ...[
+              SvgPicture.asset(imagePath, width: 28, height: 28, fit: BoxFit.contain),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              genderText == 'Мужской' ? 'Мужчина' : 'Женщина',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? const Color(0xFF983296) : Colors.grey[600],
               ),
             ),
-            if (genderText == 'Мужской')
-              Positioned(
-                left: 0,
-                top: 0,
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: SvgPicture.asset(imagePath, fit: BoxFit.contain),
-                ),
-              ),
-            if (genderText == 'Женский')
-              Positioned(
-                right: 0,
-                top: 0,
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: SvgPicture.asset(imagePath, fit: BoxFit.contain),
-                ),
-              ),
+            if (genderText == 'Женский') ...[
+              const SizedBox(width: 8),
+              SvgPicture.asset(imagePath, width: 28, height: 28, fit: BoxFit.contain),
+            ],
           ],
         ),
       ),
@@ -630,7 +655,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ГДЕ ВЫ ',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                     height: 1.1,
@@ -639,7 +664,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'НАХОДИТЕСЬ?',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF983296),
                     height: 1.1,
@@ -681,7 +706,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                         ? [
                             BoxShadow(
                               color:
-                                  const Color(0xFF983296).withOpacity(0.3),
+                                  const Color(0xFF983296).withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -737,7 +762,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'КОНТАКТНАЯ ',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                     height: 1.1,
@@ -746,7 +771,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ИНФОРМАЦИЯ',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF983296),
                     height: 1.1,
@@ -836,7 +861,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF983296).withOpacity(0.1),
+              color: const Color(0xFF983296).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -884,7 +909,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ЧТО ВАМ ',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                     height: 1.1,
@@ -893,7 +918,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ИНТЕРЕСНО?',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF983296),
                     height: 1.1,
@@ -943,7 +968,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                         ? [
                             BoxShadow(
                               color:
-                                  const Color(0xFF983296).withOpacity(0.3),
+                                  const Color(0xFF983296).withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -999,7 +1024,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ВАШИ ',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                     height: 1.1,
@@ -1008,7 +1033,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'НАВЫКИ?',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF983296),
                     height: 1.1,
@@ -1058,7 +1083,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                         ? [
                             BoxShadow(
                               color:
-                                  const Color(0xFF983296).withOpacity(0.3),
+                                  const Color(0xFF983296).withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -1129,7 +1154,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF983296).withOpacity(0.1)
+              ? const Color(0xFF983296).withValues(alpha: 0.1)
               : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -1202,7 +1227,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ПОЧЕМУ ',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
                     height: 1.1,
@@ -1211,7 +1236,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                 TextSpan(
                   text: 'ВОЛОНТЕРСТВО?',
                   style: GoogleFonts.poppins(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF983296),
                     height: 1.1,
@@ -1274,7 +1299,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.celebration, color: Colors.white, size: 28),
@@ -1294,7 +1319,7 @@ class _UserInfoOnboardingViewState extends State<_UserInfoOnboardingView>
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
               ],

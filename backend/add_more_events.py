@@ -4,8 +4,10 @@ import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app.database import SessionLocal
-from app.models.event import Event
-from app.models.user import User
+from app.models.user import User, Profile, OrganizationProfile, Interest, Skill
+from app.models.event import Event, Application, Certificate
+from app.models.chat import Chat, ChatMessage
+from app.models.notification import Notification
 
 def add_events():
     db = SessionLocal()

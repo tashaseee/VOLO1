@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:ui';
 import 'services/api_service.dart';
-import 'volunteer_profile_details_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'blocs/organizer_event_applications/organizer_event_applications_bloc.dart';
 
@@ -41,6 +38,7 @@ class _OrganizerEventApplicationsView extends StatefulWidget {
 
 class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicationsView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final Set<int> _updatingAppIds = {};
 
   @override
   void initState() {
@@ -60,6 +58,10 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
   }
 
   Future<void> _updateStatus(int applicationId, String status, {Map<String, dynamic>? app}) async {
+    if (_updatingAppIds.contains(applicationId)) return;
+    setState(() {
+      _updatingAppIds.add(applicationId);
+    });
     context.read<OrganizerEventAppsBloc>().add(UpdateAppStatus(
       eventId: widget.eventId,
       applicationId: applicationId,
@@ -72,25 +74,69 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Завершить ивент?', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        content: Text(
-          'Это действие начислит часы всем принятым волонтерам и закроет возможность подачи заявок. Вы уверены?',
-          style: GoogleFonts.poppins(),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Отмена', style: GoogleFonts.poppins(color: Colors.grey)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        title: Text(
+          'Завершить ивент?',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: const Color(0xFF0D0D26),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text('Завершить', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+        content: Text(
+          'Одобренным волонтерам начислятся часы, ИИ сгенерирует персональные сертификаты на вашем шаблоне и отправит их в профиль. Ивент перейдет в архив.',
+          style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF95969D), height: 1.45),
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: const BorderSide(color: Color(0xFFF1F0F5), width: 1.5),
+                    ),
+                  ),
+                  child: Text(
+                    'Отмена',
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF95969D),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Завершить',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -104,88 +150,66 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
   void _showAcceptanceDialog(Map<String, dynamic>? user, Map<String, dynamic>? event) {
     final profile = user?['profile'];
     final name = profile?['full_name'] ?? user?['email'] ?? 'Волонтер';
-    final chatLinkStr = event?['chat_link'] ?? 'https://t.me/volo_chat_example';
+    final chatLinkStr = event?['chat_link'] ?? '';
 
     showDialog(
       context: context,
-      builder: (context) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-        child: AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-          contentPadding: EdgeInsets.zero,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 120,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(colors: [Color(0xFF983296), Color(0xFFB856B8)]),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                ),
-                child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 60),
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: const EdgeInsets.all(24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF983296).withValues(alpha: 0.06),
+                shape: BoxShape.circle,
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-                child: Column(
-                  children: [
-                    Text(
-                      'Волонтер принят!',
-                      style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26)),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Вы успешно приняли $name для участия в ивенте. Мы отправили ему уведомление и ссылку на чат:',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF6B6B7B), height: 1.5),
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F1F5),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.link_rounded, size: 18, color: Color(0xFF983296)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              chatLinkStr,
-                              style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF983296), fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF983296),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'ОТЛИЧНО',
-                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
-                  ),
-                ),
+              child: const Icon(Icons.check_circle_rounded, color: Color(0xFF983296), size: 56),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Волонтер принят!',
+              style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26)),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Вы приняли $name. Волонтер добавлен в чат ивента в VOLO и получил уведомление.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF95969D), height: 1.5),
+            ),
+            if (chatLinkStr.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Доп. чат: $chatLinkStr',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF95969D), fontWeight: FontWeight.w600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
-          ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF983296),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                ),
+                child: Text(
+                  'ОТЛИЧНО',
+                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -194,7 +218,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
   void _showSuccessSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        content: Text(message, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
@@ -206,7 +230,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.poppins()),
+        content: Text(message, style: GoogleFonts.poppins(color: Colors.white)),
         backgroundColor: Colors.redAccent,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(20),
@@ -215,20 +239,18 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
     );
   }
 
-  
-  
-  
-  
-  
-
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<OrganizerEventAppsBloc, OrganizerEventAppsState>(
       listener: (context, state) {
         if (state.errorMessage != null) {
+          _updatingAppIds.clear();
           _showErrorSnackBar(state.errorMessage!);
-        } else if (state.isSuccessAction && state.successMessage != null) {
-          _showSuccessSnackBar(state.successMessage!, Colors.green);
+        } else if (!state.isLoading && !state.showAcceptanceDialog && !state.isSuccessAction) {
+          _updatingAppIds.clear();
+        }
+        if (state.isSuccessAction && state.successMessage != null) {
+          _showSuccessSnackBar(state.successMessage!, const Color(0xFF00BFA5));
         }
         if (state.showAcceptanceDialog && state.acceptedUser != null) {
           _showAcceptanceDialog(state.acceptedUser, state.event);
@@ -240,42 +262,14 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
         final rejectedApplications = state.applications.where((a) => a['status'] == 'rejected').toList();
 
         return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: Stack(
-        children: [
-          // Background Decorative Elements
-          Positioned(
-            top: -100,
-            right: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF983296).withOpacity(0.04),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 200,
-            left: -120,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF983296).withOpacity(0.02),
-              ),
-            ),
-          ),
-          
-          SafeArea(
+          backgroundColor: Colors.white,
+          body: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
                 _buildTabSection(pendingApplications, approvedApplications, rejectedApplications),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Expanded(
                   child: state.isLoading
                       ? _buildLoadingState()
@@ -291,16 +285,14 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
-  },
-  );
-}
+  }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -314,31 +306,24 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFF1F1F5)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0D0D26), size: 18),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0D0D26), size: 16),
                 ),
               ),
               Row(
                 children: [
-                   GestureDetector(
+                  GestureDetector(
                     onTap: _finishEvent,
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       margin: const EdgeInsets.only(right: 12),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.1),
+                        color: Colors.redAccent.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.15), width: 1.5),
                       ),
-                      child: const Icon(Icons.flag_rounded, color: Colors.redAccent, size: 20),
+                      child: const Icon(Icons.flag_rounded, color: Colors.redAccent, size: 18),
                     ),
                   ),
                   GestureDetector(
@@ -348,23 +333,23 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFF1F1F5)),
+                        border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
                       ),
-                      child: const Icon(Icons.refresh_rounded, color: Color(0xFF0D0D26), size: 20),
+                      child: const Icon(Icons.refresh_rounded, color: Color(0xFF0D0D26), size: 18),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           RichText(
             text: TextSpan(
               children: [
                 TextSpan(
                   text: 'ЗАЯВКИ ',
                   style: GoogleFonts.poppins(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF0D0D26),
                     letterSpacing: -0.5,
@@ -373,7 +358,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                 TextSpan(
                   text: 'ВОЛОНТЕРОВ',
                   style: GoogleFonts.poppins(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF983296),
                     letterSpacing: -0.5,
@@ -382,14 +367,14 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             widget.eventTitle.toUpperCase(),
             style: GoogleFonts.poppins(
-              fontSize: 13,
+              fontSize: 12,
               color: const Color(0xFF95969D),
               fontWeight: FontWeight.w700,
-              letterSpacing: 1,
+              letterSpacing: 0.5,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -401,43 +386,32 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
 
   Widget _buildTabSection(List pendingApplications, List approvedApplications, List rejectedApplications) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 28),
+      margin: const EdgeInsets.symmetric(horizontal: 24),
       height: 52,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF1F1F5)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: const Color(0xFF0D0D26).withValues(alpha: 0.015),
             blurRadius: 15,
-            offset: const Offset(0, 8),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF983296), Color(0xFFB856B8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF983296).withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(15),
+          color: const Color(0xFF983296),
         ),
         labelColor: Colors.white,
         unselectedLabelColor: const Color(0xFF95969D),
         indicatorSize: TabBarIndicatorSize.tab,
         labelStyle: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700),
         unselectedLabelStyle: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-        padding: const EdgeInsets.all(5),
+        padding: const EdgeInsets.all(4),
         tabs: [
           _buildTabItem('Новые', pendingApplications.length),
           _buildTabItem('Приняты', approvedApplications.length),
@@ -458,14 +432,14 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
             if (count > 0) ...[
               const SizedBox(width: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   count.toString(),
-                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
               ),
             ],
@@ -483,6 +457,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
     return RefreshIndicator(
       onRefresh: _loadApplications,
       color: const Color(0xFF983296),
+      backgroundColor: Colors.white,
       edgeOffset: 20,
       child: ListView.builder(
         padding: const EdgeInsets.only(left: 24, right: 24, bottom: 100, top: 8),
@@ -491,17 +466,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
         itemBuilder: (context, index) {
           final app = applications[index];
           return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => VolunteerProfileDetailsPage(
-                    volunteerData: app['user'],
-                    applicationDate: app['created_at'] != null ? _formatDate(app['created_at']) : 'Сегодня',
-                  ),
-                ),
-              );
-            },
+            onTap: () => _showVolunteerModal(context, app['user']),
             child: _buildModernApplicationCard(app, status),
           );
         },
@@ -516,37 +481,46 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
     final String avatarUrl = profile?['avatar_url'] ?? '';
     final String date = app['created_at'] != null ? _formatDate(app['created_at']) : 'Сегодня';
     
+    // Новые поля для детального просмотра
+    final String phone = profile?['phone_number'] ?? '';
+    final String aboutMe = profile?['about_me'] ?? '';
+    final String skillsStr = profile?['skills'] ?? '';
+    final List<String> skills = skillsStr.isNotEmpty ? skillsStr.split(',').map((s) => s.trim()).toList() : [];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F1F5)),
+        border: Border.all(
+          color: status == 'pending' ? const Color(0xFF983296).withValues(alpha: 0.15) : const Color(0xFFF1F0F5), 
+          width: status == 'pending' ? 1.5 : 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: status == 'pending' ? const Color(0xFF983296).withValues(alpha: 0.05) : const Color(0xFF0D0D26).withValues(alpha: 0.02),
             blurRadius: 20,
-            offset: const Offset(0, 10),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                // Premium Avatar
                 Container(
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: const Color(0xFFF5F5F8),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFF1F1F5)),
+                    border: Border.all(color: const Color(0xFFF1F0F5), width: 1.5),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     child: avatarUrl.isNotEmpty
                         ? Image.network(
                             avatarUrl.startsWith('http') ? avatarUrl : '${ApiService.baseUrl}$avatarUrl',
@@ -565,31 +539,56 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                         name,
                         style: GoogleFonts.poppins(
                           fontSize: 17,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF0D0D26),
-                          letterSpacing: -0.5,
+                          letterSpacing: -0.4,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        user?['email'] ?? '',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: const Color(0xFF95969D),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          const Icon(Icons.email_outlined, size: 12, color: Color(0xFF95969D)),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              user?['email'] ?? '',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: const Color(0xFF95969D),
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
+                      if (phone.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.phone_outlined, size: 12, color: Color(0xFF95969D)),
+                            const SizedBox(width: 4),
+                            Text(
+                              phone,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: const Color(0xFF95969D),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF983296).withOpacity(0.06),
+                              color: const Color(0xFF983296).withValues(alpha: 0.06),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -599,7 +598,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                                 Text(
                                   date,
                                   style: GoogleFonts.poppins(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     color: const Color(0xFF983296),
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -616,19 +615,82 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                   _buildStatusPill(status),
               ],
             ),
+            
+            // Информация о волонтере
+            if (aboutMe.isNotEmpty || skills.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFF1F0F5), width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (aboutMe.isNotEmpty) ...[
+                      Text(
+                        'О себе',
+                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF95969D), letterSpacing: 0.5),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        aboutMe,
+                        style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF0D0D26), height: 1.5),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (aboutMe.isNotEmpty && skills.isNotEmpty) const SizedBox(height: 12),
+                    if (skills.isNotEmpty) ...[
+                      Text(
+                        'Навыки',
+                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF95969D), letterSpacing: 0.5),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: skills.take(4).map((skill) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: Text(
+                            skill,
+                            style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF4B5563), fontWeight: FontWeight.w600),
+                          ),
+                        )).toList()..addAll(skills.length > 4 ? [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+                            child: Text('+${skills.length - 4}', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[700], fontWeight: FontWeight.w700)),
+                          )
+                        ] : []),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ],
+
             if (status == 'pending') ...[
-              const SizedBox(height: 24),
-              Container(height: 1, color: const Color(0xFFF1F1F5)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: _buildActionButton(
                       'Отклонить',
-                      const Color(0xFF95969D).withOpacity(0.05),
+                      Colors.white,
                       const Color(0xFF95969D),
                       () => _updateStatus(app['id'], 'rejected'),
                       icon: Icons.close_rounded,
+                      borderSide: const BorderSide(color: Color(0xFFF1F0F5), width: 1.5),
+                      isLoading: _updatingAppIds.contains(app['id']),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -639,7 +701,7 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
                       Colors.white,
                       () => _updateStatus(app['id'], 'approved', app: app),
                       icon: Icons.check_rounded,
-                      isGradient: true,
+                      isLoading: _updatingAppIds.contains(app['id']),
                     ),
                   ),
                 ],
@@ -654,10 +716,10 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
   Widget _buildAvatarPlaceholder(String name) {
     return Center(
       child: Text(
-        name[0].toUpperCase(),
+        name.isNotEmpty ? name[0].toUpperCase() : 'A',
         style: GoogleFonts.poppins(
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
           color: const Color(0xFF983296),
         ),
       ),
@@ -667,42 +729,39 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
   Widget _buildStatusPill(String status) {
     bool isApproved = status == 'approved';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: (isApproved ? Colors.green : Colors.red).withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
+        color: (isApproved ? Colors.green : Colors.red).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: (isApproved ? Colors.green : Colors.red).withOpacity(0.1),
+          color: (isApproved ? Colors.green : Colors.red).withValues(alpha: 0.15),
+          width: 1,
         ),
       ),
       child: Text(
         isApproved ? 'Принят' : 'Отказ',
         style: GoogleFonts.poppins(
-          color: isApproved ? Colors.green : Colors.red,
-          fontSize: 11,
+          color: isApproved ? Colors.green[800] : Colors.red[800],
+          fontSize: 10,
           fontWeight: FontWeight.w800,
         ),
       ),
     );
   }
 
-  Widget _buildActionButton(String label, Color bgColor, Color textColor, VoidCallback onTap, {IconData? icon, bool isGradient = false}) {
+  Widget _buildActionButton(String label, Color bgColor, Color textColor, VoidCallback onTap, {IconData? icon, BorderSide? borderSide, bool isLoading = false}) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isGradient ? null : bgColor,
-          gradient: isGradient ? const LinearGradient(
-            colors: [Color(0xFF983296), Color(0xFFB856B8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ) : null,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isGradient ? [
+          color: isLoading ? bgColor.withValues(alpha: 0.5) : bgColor,
+          border: borderSide != null ? Border.fromBorderSide(borderSide) : null,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: !isLoading && bgColor == const Color(0xFF983296) ? [
             BoxShadow(
-              color: const Color(0xFF983296).withOpacity(0.2),
-              blurRadius: 10,
+              color: const Color(0xFF983296).withValues(alpha: 0.2),
+              blurRadius: 8,
               offset: const Offset(0, 4),
             )
           ] : [],
@@ -710,15 +769,25 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: 16, color: textColor),
+            if (isLoading) ...[
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: textColor,
+                ),
+              ),
               const SizedBox(width: 8),
+            ] else if (icon != null) ...[
+              Icon(icon, size: 16, color: textColor),
+              const SizedBox(width: 6),
             ],
             Text(
               label,
               style: GoogleFonts.poppins(
                 color: textColor,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -756,29 +825,29 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: const Color(0xFF983296).withOpacity(0.06),
+                color: const Color(0xFF983296).withValues(alpha: 0.06),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 64, color: const Color(0xFF983296).withOpacity(0.5)),
+              child: Icon(icon, size: 56, color: const Color(0xFF983296)),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             Text(
               text,
               style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: const Color(0xFF0D0D26),
-                letterSpacing: 1,
+                letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               subtext,
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 13,
                 color: const Color(0xFF95969D),
                 height: 1.5,
               ),
@@ -800,25 +869,238 @@ class _OrganizerEventApplicationsViewState extends State<_OrganizerEventApplicat
 
   String _formatDate(String dateStr) {
     try {
-      // Force UTC interpretation if no timezone info is present, assuming server sends UTC
       DateTime date;
       if (!dateStr.endsWith('Z') && !dateStr.contains('+')) {
          date = DateTime.parse('${dateStr}Z').toLocal();
       } else {
          date = DateTime.parse(dateStr).toLocal();
       }
-      
+
       final now = DateTime.now();
       final diff = now.difference(date);
-      
-      if (diff.inMinutes < 1) return 'Только что';
-      if (diff.inMinutes < 60) return '${diff.inMinutes}м назад';
-      if (diff.inHours < 24) return '${diff.inHours}ч назад';
-      return '${date.day.toString().padLeft(2,'0')}.${date.month.toString().padLeft(2,'0')}.${date.year}';
-    } catch (e) {
+
+      if (diff.inMinutes < 60) {
+        return '${diff.inMinutes} мин назад';
+      } else if (diff.inHours < 24) {
+        return '${diff.inHours} ч назад';
+      } else if (diff.inDays < 7) {
+        return '${diff.inDays} дн назад';
+      } else {
+        return '${date.day}.${date.month}.${date.year}';
+      }
+    } catch (_) {
       return 'Сегодня';
     }
   }
+
+  void _showVolunteerModal(BuildContext context, Map<String, dynamic> user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _VolunteerModalBottomSheet(user: user),
+    );
+  }
 }
 
+class _VolunteerModalBottomSheet extends StatelessWidget {
+  final Map<String, dynamic> user;
+  
+  const _VolunteerModalBottomSheet({required this.user});
 
+  @override
+  Widget build(BuildContext context) {
+    final profile = user['profile'];
+    final name = profile?['full_name'] ?? user['email'] ?? 'Аноним';
+    final avatarUrl = profile?['avatar_url'] ?? '';
+    final phone = profile?['phone_number'] ?? '';
+    final aboutMe = profile?['about_me'] ?? '';
+    final skillsStr = profile?['skills'] ?? '';
+    final List<String> skills = skillsStr.isNotEmpty ? skillsStr.split(',').map((s) => s.trim()).toList() : [];
+    
+    // Подсчет возраста
+    String ageText = 'Возраст не указан';
+    if (profile?['birth_date'] != null) {
+      try {
+        final birthDate = DateTime.parse(profile['birth_date']);
+        final today = DateTime.now();
+        int age = today.year - birthDate.year;
+        if (today.month < birthDate.month || (today.month == birthDate.month && today.day < birthDate.day)) {
+          age--;
+        }
+        ageText = '$age лет';
+      } catch (_) {}
+    }
+
+    // Расчет шкалы опыта
+    final voloHours = (profile?['volo_hours'] ?? 0) as int;
+    final karma = (profile?['karma'] ?? 0) as int;
+    final currentLevel = (voloHours / 20).floor() + 1;
+    final nextLevelXP = currentLevel * 20;
+    final progress = (voloHours % 20) / 20;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 24),
+            width: 48,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(left: 24, right: 24, bottom: 40),
+              physics: const BouncingScrollPhysics(),
+              children: [
+                Center(
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF983296).withValues(alpha: 0.2), width: 3),
+                      image: avatarUrl.isNotEmpty ? DecorationImage(
+                        image: NetworkImage(avatarUrl.startsWith('http') ? avatarUrl : '${ApiService.baseUrl}$avatarUrl'),
+                        fit: BoxFit.cover,
+                      ) : null,
+                    ),
+                    child: avatarUrl.isEmpty ? const Icon(Icons.person, size: 40, color: Color(0xFF983296)) : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    name,
+                    style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26), letterSpacing: -0.5),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Center(
+                  child: Text(
+                    ageText,
+                    style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF95969D), fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Шкала опыта (Premium UI)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF983296), Color(0xFF6B21A8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(color: const Color(0xFF983296).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Уровень $currentLevel', style: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 4),
+                              Text('$voloHours / $nextLevelXP часов', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                const SizedBox(width: 4),
+                                Text('$karma Кармы', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w800)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                if (phone.isNotEmpty || user['email'] != null) ...[
+                  Text('Контакты', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26))),
+                  const SizedBox(height: 12),
+                  if (phone.isNotEmpty) _buildInfoTile(Icons.phone_rounded, phone),
+                  if (user['email'] != null) _buildInfoTile(Icons.email_rounded, user['email']),
+                  const SizedBox(height: 32),
+                ],
+
+                if (skills.isNotEmpty) ...[
+                  Text('Навыки', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26))),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: skills.map((s) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(color: const Color(0xFFF5F5F8), borderRadius: BorderRadius.circular(12)),
+                      child: Text(s, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF4B5563))),
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+
+                if (aboutMe.isNotEmpty) ...[
+                  Text('О себе', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0D0D26))),
+                  const SizedBox(height: 12),
+                  Text(
+                    aboutMe,
+                    style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF5D5E67), height: 1.6),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: const Color(0xFFF5F5F8), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, size: 20, color: const Color(0xFF983296)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(child: Text(text, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF0D0D26)))),
+        ],
+      ),
+    );
+  }
+}

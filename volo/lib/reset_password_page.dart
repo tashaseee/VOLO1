@@ -389,7 +389,7 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: met ? const Color(0xFF983296).withOpacity(0.1) : Colors.grey[100],
+        color: met ? const Color(0xFF983296).withValues(alpha: 0.1) : Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: met ? const Color(0xFF983296) : Colors.transparent,

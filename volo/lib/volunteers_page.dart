@@ -84,7 +84,7 @@ class _VolunteersView extends StatelessWidget {
                 ]),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: state.filterStatus,
+                  initialValue: state.filterStatus,
                   items: ['Все', 'Ожидает', 'Принят', 'Отклонён'].map((s) => DropdownMenuItem(value: s, child: Text(s, style: GoogleFonts.poppins(fontSize: 14)))).toList(),
                   onChanged: (v) => context.read<VolunteersBloc>().add(ChangeVolunteerFilter(v!)),
                   decoration: InputDecoration(labelText: 'Фильтр по статусу', labelStyle: GoogleFonts.poppins(fontSize: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
@@ -113,7 +113,7 @@ class _VolunteersView extends StatelessWidget {
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 1))]),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 1))]),
                       child: Row(children: [
                         CircleAvatar(backgroundColor: Colors.grey[300], radius: 20, child: Text(applicant['name'][0], style: GoogleFonts.poppins(color: Colors.white, fontSize: 14))),
                         const SizedBox(width: 12),

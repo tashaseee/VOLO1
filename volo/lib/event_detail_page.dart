@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'main_screen.dart';
 import 'package:volo/home_page.dart';
 import 'package:volo/search_page.dart';
 import 'package:volo/my_applications_page.dart';
 import 'package:volo/profile_page.dart';
 import 'package:volo/notifications_page.dart';
+import 'package:volo/chats_page.dart';
 import 'package:volo/application_confirmation_page.dart';
 import 'bottom_nav_bar.dart';
 import 'services/api_service.dart';
 import 'organizer_event_applications_page.dart';
+import 'chat_room_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'blocs/event_detail/event_detail_bloc.dart';
 
@@ -26,6 +29,8 @@ class EventDetailPage extends StatelessWidget {
   final List<String> benefits;
   final int eventId;
   final String? imageUrl; 
+  final int minAge;
+  final int? chatId;
 
   const EventDetailPage({
     super.key,
@@ -39,6 +44,8 @@ class EventDetailPage extends StatelessWidget {
     required this.benefits,
     required this.eventId,
     this.imageUrl, 
+    this.minAge = 0,
+    this.chatId,
   });
 
   @override
@@ -57,6 +64,8 @@ class EventDetailPage extends StatelessWidget {
         benefits: benefits,
         eventId: eventId,
         imageUrl: imageUrl,
+        minAge: minAge,
+        chatId: chatId,
       ),
     );
   }
@@ -73,6 +82,8 @@ class _EventDetailView extends StatefulWidget {
   final List<String> benefits;
   final int eventId;
   final String? imageUrl;
+  final int minAge;
+  final int? chatId;
 
   const _EventDetailView({
     required this.eventTitle,
@@ -85,6 +96,8 @@ class _EventDetailView extends StatefulWidget {
     required this.benefits,
     required this.eventId,
     this.imageUrl,
+    this.minAge = 0,
+    this.chatId,
   });
 
   @override
@@ -112,7 +125,80 @@ class _EventDetailViewState extends State<_EventDetailView> {
     }
   }
 
-  void _applyForEvent(BuildContext context) {
+  void _openInternalChat(BuildContext context, int? chatId) {
+    if (chatId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatRoomPage(
+            chatId: chatId,
+            chatName: widget.eventTitle,
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Чат мероприятия еще не создан или недоступен')),
+      );
+    }
+  }
+
+  void _applyForEvent(BuildContext context, int userAge) {
+    if (widget.minAge > 0) {
+      if (userAge == 0) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Укажите возраст',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'Для участия в мероприятиях с возрастными ограничениями необходимо указать дату рождения в профиле.',
+              style: GoogleFonts.poppins(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'ОК',
+                  style: GoogleFonts.poppins(color: const Color(0xFF983296), fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      if (userAge < widget.minAge) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Ограничение по возрасту',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'Это мероприятие имеет возрастное ограничение ${widget.minAge}+. К сожалению, ваш возраст ($userAge) не позволяет вам подать заявку.',
+              style: GoogleFonts.poppins(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'ОК',
+                  style: GoogleFonts.poppins(color: const Color(0xFF983296), fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    }
+
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -142,18 +228,40 @@ class _EventDetailViewState extends State<_EventDetailView> {
       builder: (context, state) {
         return Scaffold(
           backgroundColor: Colors.white,
-          body: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(28, 20, 28, 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 40),
-
-                    // Логотип + share
-                    Row(
-                      children: [
+          body: SafeArea(
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Логотип + share
+                      Row(
+                        children: [
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              } else {
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const MainScreen(initialIndex: 2)),
+                                  (route) => false,
+                                );}
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
+                              color: Colors.transparent,
+                              child: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 24,
+                                color: Color(0xFF983296),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 12),
                         SvgPicture.asset(
                           'assets/images/VOLO-2.svg',
                           height: 21,
@@ -243,6 +351,29 @@ class _EventDetailViewState extends State<_EventDetailView> {
                         ),
                       ],
                     ),
+                    if (widget.minAge > 0) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.child_care_rounded,
+                            size: 18,
+                            color: Color(0xFF983296),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Возрастное ограничение: ${widget.minAge}+',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 24),
 
                     // Описание
@@ -292,7 +423,7 @@ class _EventDetailViewState extends State<_EventDetailView> {
                           .map((ben) => Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF983296).withOpacity(0.1),
+                                  color: const Color(0xFF983296).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
@@ -332,8 +463,10 @@ class _EventDetailViewState extends State<_EventDetailView> {
                           ).then((_) => context.read<EventDetailBloc>().add(LoadEventDetails(widget.eventId)));
                         }
                       : (state.isApplied 
-                          ? (state.applicationStatus == 'approved' ? () => _openChat(context) : null) 
-                          : () => _applyForEvent(context))),
+                          ? (state.applicationStatus == 'approved' 
+                              ? () => _openInternalChat(context, state.chatId ?? widget.chatId) 
+                              : null) 
+                          : () => _applyForEvent(context, state.userAge))),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: (state.isApplied && state.applicationStatus == 'approved') 
                         ? const Color(0xFF0088CC) 
@@ -363,6 +496,7 @@ class _EventDetailViewState extends State<_EventDetailView> {
               ),
             ],
           ),
+        ),
           bottomNavigationBar: CustomBottomNavBar(
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
@@ -381,10 +515,10 @@ class _EventDetailViewState extends State<_EventDetailView> {
         Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const SearchPage(), transitionDuration: Duration.zero));
         break;
       case 2:
-        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const HomePage(), transitionDuration: Duration.zero));
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const MainScreen(initialIndex: 2), transitionDuration: Duration.zero));
         break;
       case 3:
-        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => MyApplicationsPage(), transitionDuration: Duration.zero));
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => ChatsPage(), transitionDuration: Duration.zero));
         break;
       case 4:
         Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => const ProfilePage(), transitionDuration: Duration.zero));

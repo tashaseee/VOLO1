@@ -1,64 +1,171 @@
-// lib/event_detail_history_page.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'services/api_service.dart';
 
-class EventDetailHistoryPage extends StatelessWidget {
+class EventDetailHistoryPage extends StatefulWidget {
   final Map<String, dynamic> event;
 
   const EventDetailHistoryPage({super.key, required this.event});
 
   @override
+  State<EventDetailHistoryPage> createState() => _EventDetailHistoryPageState();
+}
+
+class _EventDetailHistoryPageState extends State<EventDetailHistoryPage> {
+  final ApiService _apiService = ApiService();
+  final TextEditingController _reviewTextController = TextEditingController();
+
+  List<dynamic> _reviews = [];
+  Map<String, dynamic>? _myReview;
+  int _selectedRating = 0;
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+  int? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _reviewTextController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final eventId = widget.event['id'] as int?;
+      if (eventId == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Load user profile to get current user ID
+      final userResult = await _apiService.getUserProfile();
+      if (userResult['success'] == true) {
+        _currentUserId = userResult['data']?['id'] as int?;
+      }
+
+      // Load reviews
+      final reviewsResult = await _apiService.getEventReviews(eventId);
+      if (reviewsResult['success'] == true) {
+        _reviews = reviewsResult['data'] ?? [];
+        
+        // Find if current user already left a review
+        if (_currentUserId != null) {
+          final myReviewList = _reviews.where((r) => r['user_id'] == _currentUserId).toList();
+          if (myReviewList.isNotEmpty) {
+            _myReview = myReviewList.first;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading event reviews: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _submitReview() async {
+    final eventId = widget.event['id'] as int?;
+    if (eventId == null) return;
+
+    if (_selectedRating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Пожалуйста, выберите оценку (от 1 до 5 звезд)', style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red[400],
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final result = await _apiService.submitReview(
+        eventId,
+        _selectedRating,
+        _reviewTextController.text.trim(),
+      );
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Отзыв успешно опубликован', style: GoogleFonts.poppins(color: Colors.white)),
+            backgroundColor: const Color(0xFF4CAF50),
+          ),
+        );
+        _reviewTextController.clear();
+        _loadData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Ошибка отправки отзыва', style: GoogleFonts.poppins()),
+            backgroundColor: Colors.red[400],
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка сети: $e', style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red[400],
+        ),
+      );
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
+  double get _averageRating {
+    if (_reviews.isEmpty) return 5.0; // Default rating if no reviews
+    final total = _reviews.fold(0.0, (sum, item) => sum + (item['rating'] as num? ?? 0).toDouble());
+    return total / _reviews.length;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final event = widget.event;
+    final isCompleted = event['status'] == 'completed';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: SvgPicture.asset(
-            'assets/images/left.svg',
-            width: 24,
-            height: 24,
-            colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-          ),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF983296), size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.of(context).maybePop();
+            }
+          },
         ),
-        title: Text(
-          'Детали события',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
+        title: const SizedBox(), // Transparent/empty header
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.share_rounded,
-              size: 20,
-              color: Color(0xFF983296),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Поделиться событием',
-                    style: GoogleFonts.poppins(),
-                  ),
-                  backgroundColor: const Color(0xFF983296),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Фото события
+            // Event Photo
             Stack(
               children: [
                 Container(
@@ -81,7 +188,7 @@ class EventDetailHistoryPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF4CAF50).withOpacity(0.3),
+                          color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -105,18 +212,18 @@ class EventDetailHistoryPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Категория
+                  // Category
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getCategoryColor(event['category']).withOpacity(0.1),
+                      color: _getCategoryColor(event['category']).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: _getCategoryColor(event['category']).withOpacity(0.3),
+                        color: _getCategoryColor(event['category']).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
-                      event['category'],
+                      event['category'] ?? 'Другое',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -127,9 +234,9 @@ class EventDetailHistoryPage extends StatelessWidget {
 
                   const SizedBox(height: 16),
 
-                  // Заголовок
+                  // Title & Organizer
                   Text(
-                    event['title'],
+                    event['title'] ?? 'Без названия',
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -138,7 +245,7 @@ class EventDetailHistoryPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    event['organizer'],
+                    event['organizer'] ?? 'Организатор не указан',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -148,439 +255,77 @@ class EventDetailHistoryPage extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // Блок с оценками - улучшенный дизайн
+                  // Event Stats
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF983296).withOpacity(0.08),
-                          const Color(0xFFB856B8).withOpacity(0.05),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: Colors.grey[50],
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFF983296).withOpacity(0.15),
-                        width: 1.5,
+                        color: Colors.grey[200]!,
                       ),
                     ),
                     child: Column(
                       children: [
                         Text(
-                          'Оценки мероприятия',
+                          'Статистика мероприятия',
                           style: GoogleFonts.poppins(
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: Colors.black,
                           ),
                         ),
                         const SizedBox(height: 20),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Expanded(
-                              child: _buildRatingItem(
-                                'Событие',
-                                event['eventRating'],
-                              ),
-                            ),
-                            Container(
-                              width: 2,
-                              height: 80,
-                              margin: const EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.grey[300]!,
-                                    Colors.grey[200]!,
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildRatingItem(
-                                'Организация',
-                                event['organizerRating'],
-                              ),
-                            ),
+                            _buildStatItem('Рейтинг', _isLoading ? '...' : _averageRating.toStringAsFixed(1)),
+                            _buildStatItem('Часы', '+${event['hours']} ч'),
+                            _buildStatItem('Волонтеры', '${event['volunteers']}'),
                           ],
                         ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // Заработанные часы - улучшенный дизайн
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF983296), Color(0xFFB856B8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF983296).withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Заработано',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '+${event['hours']}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                      height: 1,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 6),
-                                    child: Text(
-                                      'Volo-часов',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: SvgPicture.asset(
-                            'assets/images/clock.svg',
-                            width: 32,
-                            height: 32,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Информация о событии
-                  Text(
-                    'Информация о событии',
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow('Дата проведения', event['date']),
-                  const SizedBox(height: 12),
-                  _buildInfoRow('Локация', event['location']),
-                  const SizedBox(height: 12),
-                  _buildInfoRowWithIcon('Участников', '${event['volunteers']} волонтеров'),
-
-                  const SizedBox(height: 24),
-
-                  // Описание
-                  Text(
-                    'Описание события',
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Text(
-                      event['description'],
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        height: 1.6,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Обязанности
-                  Text(
-                    'Ваши обязанности',
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...(event['responsibilities'] as List<String>).map((resp) => Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              margin: const EdgeInsets.only(top: 6),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF983296),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                resp,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-
-                  const SizedBox(height: 24),
-
-                  // Бонусы
-                  Text(
-                    'Полученные бонусы',
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: (event['benefits'] as List<String>)
-                        .map((ben) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFF983296).withOpacity(0.1),
-                                    const Color(0xFFB856B8).withOpacity(0.1),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: const Color(0xFF983296).withOpacity(0.3),
-                                ),
-                              ),
-                              child: Text(
-                                ben,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF983296),
-                                ),
-                              ),
-                            ))
-                        .toList(),
-                  ),
-
-                  if (event['hasCertificate']) ...[
-                    const SizedBox(height: 32),
-                    // Сертификат - улучшенный дизайн
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF983296), Color(0xFFB856B8)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF983296).withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Image.asset(
-                              'assets/images/star.png',
-                              width: 48,
-                              height: 48,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Сертификат участника',
-                            style: GoogleFonts.poppins(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Поздравляем с успешным завершением!',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          
-                          // Превью сертификата
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.asset(
-                                'assets/images/sert.jpg',
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    _showCertificateFullScreen(context);
-                                  },
-                                  child: Text(
-                                    'Просмотреть',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    side: const BorderSide(color: Colors.white, width: 2),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Сертификат скачивается...',
-                                          style: GoogleFonts.poppins(),
-                                        ),
-                                        backgroundColor: const Color(0xFF4CAF50),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  child: Text(
-                                    'Скачать',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF983296),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
 
                   const SizedBox(height: 32),
+
+                  // Info details list
+                  Text(
+                    'Детали',
+                    style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.black),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('Дата проведения', event['date'] ?? 'Не указана'),
+                  const SizedBox(height: 12),
+                  _buildInfoRow('Локация', event['location'] ?? 'Не указана'),
+
+                  const SizedBox(height: 32),
+
+                  // Description
+                  Text(
+                    'Описание',
+                    style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.black),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    event['description'] ?? '',
+                    style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700], height: 1.5),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Certificate
+                  if (event['hasCertificate'] == true) ...[
+                    _buildCertificateSection(),
+                    const SizedBox(height: 32),
+                  ],
+
+                  // Feedback Section
+                  if (isCompleted) ...[
+                    _buildFeedbackSection(),
+                    const SizedBox(height: 32),
+                  ],
                 ],
               ),
             ),
@@ -590,7 +335,264 @@ class EventDetailHistoryPage extends StatelessWidget {
     );
   }
 
-  void _showCertificateFullScreen(BuildContext context) {
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF983296)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey[500]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCertificateSection() {
+    final certUrl = widget.event['certificateUrl'] as String?;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F1F5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium_outlined, color: Color(0xFF983296), size: 24),
+              const SizedBox(width: 10),
+              Text(
+                'Сертификат участника',
+                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Certificate Preview Card
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              width: double.infinity,
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: certUrl != null
+                  ? Image.network(
+                      certUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildDummyCertificate();
+                      },
+                    )
+                  : _buildDummyCertificate(),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _showCertificateFullScreen(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF983296),
+                    side: const BorderSide(color: Color(0xFF983296), width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Просмотреть',
+                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Сертификат скачивается...', style: GoogleFonts.poppins()),
+                        backgroundColor: const Color(0xFF4CAF50),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF983296),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Скачать',
+                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDummyCertificate() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.workspace_premium_rounded, size: 48, color: Colors.grey[400]),
+        const SizedBox(height: 8),
+        Text(
+          'Сертификат генерируется',
+          style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeedbackSection() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF983296)));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F1F5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _myReview != null ? 'Ваш отзыв' : 'Оставить отзыв',
+            style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black),
+          ),
+          const SizedBox(height: 16),
+          if (_myReview != null) ...[
+            Row(
+              children: List.generate(5, (i) {
+                final score = _myReview!['rating'] as num? ?? 0;
+                return Icon(
+                  Icons.star_rounded,
+                  size: 24,
+                  color: i < score ? Colors.amber : Colors.grey[300],
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+            if (_myReview!['text'] != null && (_myReview!['text'] as String).isNotEmpty)
+              Text(
+                _myReview!['text']!,
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[800], height: 1.4),
+              )
+            else
+              Text(
+                'Без текстового комментария',
+                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400], fontStyle: FontStyle.italic),
+              ),
+          ] else ...[
+            // Rating selector
+            Row(
+              children: List.generate(5, (i) {
+                final starIndex = i + 1;
+                final isSelected = starIndex <= _selectedRating;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedRating = starIndex;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Icon(
+                      Icons.star_rounded,
+                      size: 32,
+                      color: isSelected ? Colors.amber : Colors.grey[300],
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _reviewTextController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Поделитесь вашим мнением о мероприятии...',
+                hintStyle: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 13),
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[200]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[200]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF983296), width: 1.5),
+                ),
+              ),
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submitReview,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF983296),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(
+                        'Опубликовать отзыв',
+                        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                      ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showCertificateFullScreen() {
+    final certUrl = widget.event['certificateUrl'] as String?;
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -598,30 +600,39 @@ class EventDetailHistoryPage extends StatelessWidget {
         insetPadding: const EdgeInsets.all(20),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 600),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Colors.black),
-                    ),
-                  ),
-                ],
+              AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.black),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                title: Text(
+                  'Просмотр сертификата',
+                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.black),
+                ),
+                centerTitle: true,
               ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  'assets/images/sert.jpg',
-                  fit: BoxFit.contain,
+              Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: certUrl != null
+                      ? Image.network(
+                          certUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset('assets/images/sert.jpg');
+                          },
+                        )
+                      : Image.asset('assets/images/sert.jpg'),
                 ),
               ),
             ],
@@ -631,67 +642,9 @@ class EventDetailHistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRatingItem(String label, double? rating) {
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/star.png',
-              width: 24,
-              height: 24,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              rating?.toStringAsFixed(1) ?? 'N/A',
-              style: GoogleFonts.poppins(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'из 5.0',
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: Colors.grey[500],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoSection(String title, IconData icon) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildInfoRow(String label, String value) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[50],
@@ -723,51 +676,7 @@ class EventDetailHistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRowWithIcon(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            'assets/images/name.svg',
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(Colors.grey[600]!, BlendMode.srcIn),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getCategoryColor(String category) {
+  Color _getCategoryColor(String? category) {
     switch (category) {
       case 'Культура':
         return const Color(0xFFE91E63);

@@ -31,7 +31,10 @@ def setup_development():
     # Проверяем импорты
     try:
         from app.database import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, Profile, OrganizationProfile, Interest, Skill
+        from app.models.event import Event, Application, Certificate
+        from app.models.chat import Chat, ChatMessage
+        from app.models.notification import Notification
         from app.auth_utils import get_password_hash
         
         print("✅ Импорты работают правильно")

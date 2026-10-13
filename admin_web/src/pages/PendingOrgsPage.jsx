@@ -9,8 +9,26 @@ import {
     ExternalLink,
     ShieldAlert,
     Search,
-    Filter
+    Filter,
+    Phone,
+    Globe,
+    Calendar,
+    FileText
 } from 'lucide-react';
+
+const highlightMatch = (text, search) => {
+    if (!search || !text) return text;
+    const parts = text.split(new RegExp(`(${search})`, 'gi'));
+    return (
+        <span>
+            {parts.map((part, i) => 
+                part.toLowerCase() === search.toLowerCase() 
+                    ? <mark key={i} style={{ backgroundColor: 'rgba(152, 50, 150, 0.2)', color: 'var(--primary-dark)', fontWeight: 'bold', padding: '0 2px', borderRadius: '4px' }}>{part}</mark>
+                    : part
+            )}
+        </span>
+    );
+};
 
 export default function PendingOrgsPage({ token }) {
     const [orgs, setOrgs] = useState([]);
@@ -62,16 +80,29 @@ export default function PendingOrgsPage({ token }) {
                     <p className="page-description">Ожидают проверки: {orgs.length} организаций</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Search size={18} style={{ position: 'absolute', left: '16px', color: 'var(--primary)' }} />
                         <input
                             type="text"
                             placeholder="Поиск по названию или БИН..."
                             className="search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ paddingLeft: '2.5rem', width: '300px' }}
+                            style={{ 
+                                paddingLeft: '3rem', 
+                                paddingRight: '1rem',
+                                width: '360px',
+                                height: '48px',
+                                borderRadius: '14px',
+                                border: '2px solid var(--border)',
+                                background: 'white',
+                                boxShadow: 'var(--shadow-sm)',
+                                fontSize: '0.95rem',
+                                fontWeight: '600',
+                                color: 'var(--text-primary)',
+                                transition: 'all 0.3s'
+                            }}
                         />
                     </div>
                 </div>
@@ -86,71 +117,111 @@ export default function PendingOrgsPage({ token }) {
                     <p style={{ color: 'var(--text-secondary)' }}>Новых заявок на верификацию пока нет.</p>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
                     {filteredOrgs.map((org) => (
-                        <div key={org.id} className="card org-card">
+                        <div key={org.id} className="card org-card" style={{ padding: '2rem' }}>
                             <div className="org-card-header">
                                 <div className="org-meta">
-                                    <div className="org-icon">
-                                        <Building2 size={24} />
+                                    <div className="org-icon" style={{ background: 'linear-gradient(135deg, var(--primary-light), white)', border: '1px solid rgba(152, 50, 150, 0.1)' }}>
+                                        <Building2 size={26} />
                                     </div>
                                     <div>
-                                        <h3>{org.org_name || 'Без названия'}</h3>
+                                        <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>
+                                            {highlightMatch(org.org_name, searchTerm) || 'Без названия'}
+                                        </h3>
                                         <div className="org-badges">
-                                            <span className="badge badge-warning">На проверке</span>
-                                            <span className="badge" style={{ background: '#f1f5f9', color: '#475569' }}>ID: {org.id}</span>
+                                            <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>На верификации</span>
+                                            <span className="badge" style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.7rem' }}>ID: {org.id}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="org-actions">
-                                    <button
-                                        className="btn btn-outline"
-                                        onClick={() => {/* Посмотреть подробнее */ }}
-                                    >
-                                        <ShieldAlert size={16} />
-                                        Проверить
-                                    </button>
+                                <div className="org-actions" style={{ gap: '0.85rem' }}>
                                     <button
                                         className="btn btn-primary"
                                         disabled={processingId === org.id}
                                         onClick={() => handleApprove(org.id)}
+                                        style={{ height: '44px', fontSize: '0.875rem' }}
                                     >
                                         <CheckCircle2 size={16} />
-                                        {processingId === org.id ? 'Одобрение...' : 'Одобрить'}
+                                        {processingId === org.id ? 'Одобрение...' : 'Одобрить профиль'}
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="org-details-grid">
-                                <div className="detail-item">
-                                    <Hash size={16} className="detail-icon" />
+                            <div className="org-details-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+                                <div className="detail-item" style={{ 
+                                    border: searchTerm && org.bin?.includes(searchTerm) ? '1.5px solid rgba(152, 50, 150, 0.4)' : '1.5px solid transparent',
+                                    background: searchTerm && org.bin?.includes(searchTerm) ? 'var(--primary-light)' : 'transparent',
+                                    padding: '8px 12px',
+                                    borderRadius: '12px',
+                                    transition: 'all 0.3s',
+                                    display: 'flex',
+                                    gap: '0.75rem',
+                                    alignItems: 'flex-start'
+                                }}>
+                                    <Hash size={16} className="detail-icon" style={{ color: 'var(--primary)' }} />
                                     <div>
-                                        <p className="label">БИН/ИИН</p>
-                                        <p className="value">{org.bin || '-—'}</p>
+                                        <p className="label">БИН / ИИН</p>
+                                        <p className="value" style={{ fontFamily: 'monospace', fontSize: '1.05rem', letterSpacing: '0.05em' }}>
+                                            {highlightMatch(org.bin, searchTerm) || '—-'}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="detail-item">
-                                    <MapPin size={16} className="detail-icon" />
+                                    <Phone size={16} className="detail-icon" style={{ color: 'var(--primary)' }} />
                                     <div>
-                                        <p className="label">Адрес</p>
-                                        <p className="value">{org.address || 'Казахстан, Алматы'}</p>
+                                        <p className="label">Контактный телефон</p>
+                                        <p className="value">{org.phone && org.phone !== 'Не указано' ? org.phone : '—-'}</p>
                                     </div>
                                 </div>
                                 <div className="detail-item">
-                                    <ShieldAlert size={16} className="detail-icon" />
+                                    <Globe size={16} className="detail-icon" style={{ color: 'var(--primary)' }} />
                                     <div>
-                                        <p className="label">Тип организации</p>
-                                        <p className="value">Благотворительный фонд</p>
+                                        <p className="label">Официальный сайт</p>
+                                        <p className="value">
+                                            {org.website && org.website !== 'Не указано' ? (
+                                                <a href={org.website.startsWith('http') ? org.website : `https://${org.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}>
+                                                    {org.website.replace(/^https?:\/\/(www\.)?/, '')}
+                                                    <ExternalLink size={12} />
+                                                </a>
+                                            ) : '—-'}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="detail-item">
-                                    <ExternalLink size={16} className="detail-icon" />
+                                    <MapPin size={16} className="detail-icon" style={{ color: 'var(--primary)' }} />
+                                    <div>
+                                        <p className="label">Адрес офиса</p>
+                                        <p className="value">{org.address && org.address !== 'Не указано' ? org.address : '—-'}</p>
+                                    </div>
+                                </div>
+                                <div className="detail-item">
+                                    <ExternalLink size={16} className="detail-icon" style={{ color: 'var(--primary)' }} />
                                     <div>
                                         <p className="label">Email владельца</p>
-                                        <p className="value">{org.email}</p>
+                                        <p className="value" style={{ wordBreak: 'break-all' }}>{org.email}</p>
+                                    </div>
+                                </div>
+                                <div className="detail-item">
+                                    <Calendar size={16} className="detail-icon" style={{ color: 'var(--primary)' }} />
+                                    <div>
+                                        <p className="label">Дата подачи заявки</p>
+                                        <p className="value">
+                                            {org.created_at ? new Date(org.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Недавно'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
+
+                            {org.description && org.description !== 'Не указано' && (
+                                <div style={{ marginTop: '1.5rem', background: '#F9FAF8', padding: '1.25rem', borderRadius: 'var(--radius)', borderLeft: '4px solid var(--primary)', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.01)' }}>
+                                    <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <FileText size={14} style={{ color: 'var(--primary)' }} />
+                                        Описание деятельности и миссия
+                                    </p>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', lineHeight: '1.6', fontWeight: '500' }}>{org.description}</p>
+                                </div>
+                            )}
 
                             <style jsx="true">{`
                                 .org-card {
